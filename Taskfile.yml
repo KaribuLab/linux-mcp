@@ -1,0 +1,46 @@
+version: "3"
+
+vars:
+  APP: linux-mcp
+  BIN_DIR: dist
+  PKG: ./cmd/linux-mcp
+
+includes:
+  linux_amd64:
+    taskfile: ./taskfiles/linux_amd64.yml
+  linux_arm64:
+    taskfile: ./taskfiles/linux_arm64.yml
+  darwin_amd64:
+    taskfile: ./taskfiles/darwin_amd64.yml
+  darwin_arm64:
+    taskfile: ./taskfiles/darwin_arm64.yml
+  windows_amd64:
+    taskfile: ./taskfiles/windows_amd64.yml
+  windows_arm64:
+    taskfile: ./taskfiles/windows_arm64.yml
+
+tasks:
+  default:
+    desc: Lista tareas disponibles
+    cmds:
+      - task --list
+
+  build:
+    desc: Build para el OS/ARCH del host
+    cmds:
+      - task: "{{OS}}_{{ARCH}}:build"
+
+  build:all:
+    desc: Build para todas las plataformas
+    deps:
+      - linux_amd64:build
+      - linux_arm64:build
+      - darwin_amd64:build
+      - darwin_arm64:build
+      - windows_amd64:build
+      - windows_arm64:build
+
+  clean:
+    desc: Elimina binarios generados
+    cmds:
+      - rm -rf {{.BIN_DIR}}

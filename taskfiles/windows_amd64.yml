@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build windows/amd64
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - GOOS=windows GOARCH=amd64 go build -o {{.BIN_DIR}}/{{.APP}}-windows-amd64.exe {{.PKG}}

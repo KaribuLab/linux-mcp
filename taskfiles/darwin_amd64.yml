@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build darwin/amd64
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - GOOS=darwin GOARCH=amd64 go build -o {{.BIN_DIR}}/{{.APP}}-darwin-amd64 {{.PKG}}

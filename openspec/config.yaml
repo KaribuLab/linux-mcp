@@ -1,0 +1,46 @@
+schema: spec-driven
+
+# Contexto del proyecto (se muestra a la IA al crear artefactos).
+context: |
+  Proyecto: linux-mcp (github.com/KaribuLab/linux-mcp)
+  Qué es: servidor MCP que expone tools de sistema de archivos Linux a clientes
+  (Cursor, Claude, MCP Inspector, etc.) vía Model Context Protocol.
+
+  Stack:
+  - Lenguaje: Go 1.26+
+  - SDK MCP: github.com/modelcontextprotocol/go-sdk (Streamable HTTP)
+  - Entrypoint: cmd/linux-mcp → internal/handler.NewHandler
+  - Tools: internal/tool (registro con mcp.AddTool)
+  - Puerto por defecto: localhost:5000
+  - CORS: requerido para MCP Inspector (browser)
+  - Dev: Air (go tool air), Task (Taskfile.yml + taskfiles/{os}_{arch}.yml)
+  - Licencia: Apache 2.0
+  - Specs: OpenSpec schema spec-driven (opsx explore/propose/apply/archive)
+  - Grafo de código: graphify-out/ (actualizar con `graphify update .`)
+
+  Arquitectura:
+  - main → NewHandler → mcp.Server + tools + StreamableHTTPHandler + withCORS
+  - Cada tool vive en internal/tool/<nombre>.go con Add*Tool + handler tipado
+  - Documentación de tools: docs/tools/<nombre>.md (índice en docs/README.md)
+
+  Convenciones:
+  - Commits: Conventional Commits con prefijos feat/fix/chore/refactor; mensaje en español neutro
+  - Tools nuevas: implementación + registro en NewHandler + doc en docs/tools/ + fila en docs/README.md
+  - No inventar tools sin documentar; la doc es parte del Definition of Done
+
+# Reglas por artefacto.
+rules:
+  proposal:
+    - Describir impacto en tools MCP existentes o nuevas
+    - Si se añade o cambia una tool, listar la ruta docs/tools/<nombre>.md que se creará o actualizará
+    - Incluir sección "Non-goals" cuando ayude a acotar alcance
+  design:
+    - Detallar firma de tools (nombre MCP, args JSON, forma de respuesta)
+    - Explicar registro en NewHandler y transporte (Streamable HTTP / CORS si aplica)
+    - Referenciar docs/tools/ como fuente de verdad de comportamiento público
+  specs:
+    - Requisitos de tools deben ser verificables contra docs/tools/ y el código en internal/tool
+  tasks:
+    - Toda task que añada o modifique una tool MCP debe incluir subtarea explícita de documentarla en docs/tools/<nombre>.md y actualizar docs/README.md
+    - No marcar complete una tool sin documentación alineada al comportamiento real del código
+    - Preferir chunks de trabajo acotados (ideal ≤ 2 horas)

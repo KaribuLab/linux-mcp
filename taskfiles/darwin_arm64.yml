@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build darwin/arm64
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - GOOS=darwin GOARCH=arm64 go build -o {{.BIN_DIR}}/{{.APP}}-darwin-arm64 {{.PKG}}

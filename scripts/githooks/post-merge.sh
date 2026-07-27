@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ "${1:-}" = "rebase" ] || exit 0
+
+cd "$(git rev-parse --show-toplevel)"
+graphify update
