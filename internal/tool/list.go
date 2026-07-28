@@ -2,104 +2,151 @@ package tool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/KaribuLab/linux-mcp/internal/policy"
+	"github.com/KaribuLab/linux-mcp/internal/toolmeta"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// ListToolDescription is the MCP tool description (agent-facing response contract).
+const ListToolDescription = `List directory entries with a bounded markdown response (max 1000 rows). On success the first line is metadata: [list path=... entries=returned/total truncated=bool] followed by a markdown table. With list=false columns are |File|; with list=true columns are |Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|. On path policy block returns a single line [blocked class=... path=...] with no rows. Does not dump unbounded directory listings.`
 
 type ListFilesArgs struct {
 	Path string `json:"path" jsonschema:"the path to list the files from"`
 	All  bool   `json:"all" jsonschema:"whether to list all files, including hidden files"`
-	List bool   `json:"list" jsonschema:"whether to list the files as a list"`
+	List bool   `json:"list" jsonschema:"whether to list detailed columns (true) or names only (false)"`
 }
 
 type fileInfo struct {
-	Name        string      `json:"name" jsonschema:"the name of the file"`
-	Size        int64       `json:"size,omitempty" jsonschema:"the size of the file in bytes"`
-	Mode        os.FileMode `json:"mode,omitempty" jsonschema:"the mode of the file"`
-	Owner       string      `json:"owner,omitempty" jsonschema:"the owner of the file"`
-	Group       string      `json:"group,omitempty" jsonschema:"the group of the file"`
-	ModTime     time.Time   `json:"modTime,omitzero" jsonschema:"the modification time of the file"`
-	IsDir       bool        `json:"isDir" jsonschema:"whether the file is a directory"`
-	IsSymlink   bool        `json:"isSymlink,omitempty" jsonschema:"whether the file is a symlink"`
-	SymlinkPath string      `json:"symlinkPath,omitempty" jsonschema:"the path of the symlink"`
+	Name        string
+	Size        int64
+	Mode        os.FileMode
+	Owner       string
+	Group       string
+	ModTime     time.Time
+	IsDir       bool
+	IsSymlink   bool
+	SymlinkPath string
 }
 
-func (f fileInfo) String() string {
-	return fmt.Sprintf("|%s|%d|%s|%s|%s|%s|%t|%t|%s|\n", f.Name, f.Size, f.Mode, f.Owner, f.Group, f.ModTime, f.IsDir, f.IsSymlink, f.SymlinkPath)
+func (f fileInfo) detailedRow() string {
+	return fmt.Sprintf("|%s|%d|%s|%s|%s|%s|%t|%t|%s|\n",
+		f.Name, f.Size, f.Mode, f.Owner, f.Group, f.ModTime, f.IsDir, f.IsSymlink, f.SymlinkPath)
+}
+
+func (f fileInfo) simpleRow() string {
+	return fmt.Sprintf("|%s|\n", f.Name)
 }
 
 func ListFiles(ctx context.Context, req *mcp.CallToolRequest, args ListFilesArgs) (*mcp.CallToolResult, any, error) {
-	files, err := os.ReadDir(args.Path)
+	abs, err := policy.CheckPath(args.Path)
+	if err != nil {
+		var d *policy.Denied
+		if errors.As(err, &d) {
+			text := toolmeta.Blocked{Class: string(d.Class), Path: d.Path}.String()
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: text}},
+				IsError: true,
+			}, nil, nil
+		}
+		return nil, nil, err
+	}
+
+	files, err := os.ReadDir(abs)
 	if err != nil {
 		return nil, nil, err
 	}
-	var content strings.Builder
-	if args.List {
-		content.WriteString("|Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|\n")
-		content.WriteString("|---|---|---|---|---|---|---|---|---|\n")
-	} else {
-		content.WriteString("|File|\n")
-		content.WriteString("|---|\n")
-	}
+
+	visible := make([]os.DirEntry, 0, len(files))
 	for _, file := range files {
 		if args.All || !strings.HasPrefix(file.Name(), ".") {
-			if args.List {
-				info, err := file.Info()
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to get file info: %v", err)
-				}
-				uid := info.Sys().(*syscall.Stat_t).Uid
-				gid := info.Sys().(*syscall.Stat_t).Gid
-				owner, err := user.LookupId(strconv.Itoa(int(uid)))
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to lookup owner in file %s: %v", file.Name(), err)
-				}
-				group, err := user.LookupId(strconv.Itoa(int(gid)))
-				if err != nil {
-					return nil, nil, fmt.Errorf("failed to lookup group in file %s: %v", file.Name(), err)
-				}
-				var symlinkPath string
-				if file.Type() == os.ModeSymlink {
-					symlinkPath, err = os.Readlink(file.Name())
-					if err != nil && !os.IsNotExist(err) {
-						return nil, nil, fmt.Errorf("failed to read symlink in file %s: %v", file.Name(), err)
-					}
-				}
-				content.WriteString(fileInfo{
-					Name:        file.Name(),
-					Size:        info.Size(),
-					Mode:        info.Mode(),
-					ModTime:     info.ModTime(),
-					IsDir:       file.IsDir(),
-					IsSymlink:   file.Type() == os.ModeSymlink,
-					SymlinkPath: symlinkPath,
-					Owner:       owner.Username,
-					Group:       group.Name,
-				}.String())
-			} else {
-				content.WriteString(fileInfo{
-					Name: file.Name(),
-				}.String())
-			}
+			visible = append(visible, file)
 		}
 	}
+	total := len(visible)
+	truncated := total > policy.MaxListEntries
+	limit := total
+	if truncated {
+		limit = policy.MaxListEntries
+	}
+
+	var body strings.Builder
+	if args.List {
+		body.WriteString("|Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|\n")
+		body.WriteString("|---|---|---|---|---|---|---|---|---|\n")
+	} else {
+		body.WriteString("|File|\n")
+		body.WriteString("|---|\n")
+	}
+
+	for i := 0; i < limit; i++ {
+		file := visible[i]
+		if args.List {
+			info, err := file.Info()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to get file info: %w", err)
+			}
+			uid := info.Sys().(*syscall.Stat_t).Uid
+			gid := info.Sys().(*syscall.Stat_t).Gid
+			ownerName := strconv.Itoa(int(uid))
+			if owner, err := user.LookupId(strconv.Itoa(int(uid))); err == nil {
+				ownerName = owner.Username
+			}
+			groupName := strconv.Itoa(int(gid))
+			if group, err := user.LookupGroupId(strconv.Itoa(int(gid))); err == nil {
+				groupName = group.Name
+			}
+			var symlinkPath string
+			isSymlink := file.Type()&os.ModeSymlink != 0
+			if isSymlink {
+				symlinkPath, err = os.Readlink(filepath.Join(abs, file.Name()))
+				if err != nil && !os.IsNotExist(err) {
+					return nil, nil, fmt.Errorf("failed to read symlink in file %s: %w", file.Name(), err)
+				}
+			}
+			body.WriteString(fileInfo{
+				Name:        file.Name(),
+				Size:        info.Size(),
+				Mode:        info.Mode(),
+				ModTime:     info.ModTime(),
+				IsDir:       file.IsDir(),
+				IsSymlink:   isSymlink,
+				SymlinkPath: symlinkPath,
+				Owner:       ownerName,
+				Group:       groupName,
+			}.detailedRow())
+		} else {
+			body.WriteString(fileInfo{Name: file.Name()}.simpleRow())
+		}
+	}
+
+	header := toolmeta.ListHeader{
+		Path:      abs,
+		Returned:  limit,
+		Total:     total,
+		Truncated: truncated,
+	}
+	if truncated {
+		header.Next = limit
+	}
+	text := toolmeta.Render(header, &body)
 	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: content.String()},
-		},
+		Content: []mcp.Content{&mcp.TextContent{Text: text}},
 	}, nil, nil
 }
 
 func AddListFilesTool(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list",
-		Description: "List the files in a directory in markdown format",
+		Description: ListToolDescription,
 	}, ListFiles)
 }

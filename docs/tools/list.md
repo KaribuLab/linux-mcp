@@ -1,91 +1,81 @@
 # Tool: `list`
 
-Lista entradas de un directorio y las formatea como tabla markdown para el cliente MCP.
+Lista entradas de un directorio con meta mínima y tabla markdown acotada (máx. 1000 filas).
 
 | Campo | Valor |
 |-------|-------|
 | Nombre MCP | `list` |
 | Código | `internal/tool/list.go` |
 | Registro | `AddListFilesTool` → `NewHandler` |
-| Descripción MCP | List the files in a directory in markdown format |
+| Descripción MCP | Contrato completo en `tool.ListToolDescription` (meta `[list …]`, tabla markdown, `[blocked …]`) |
 
 ## Parámetros
 
 | Nombre | Tipo | Requerido | Descripción |
 |--------|------|-----------|-------------|
 | `path` | `string` | sí | Directorio a listar |
-| `all` | `bool` | no | Si `true`, incluye archivos ocultos (nombre con prefijo `.`) |
+| `all` | `bool` | no | Si `true`, incluye ocultos (prefijo `.`) |
 | `list` | `bool` | no | Si `true`, tabla detallada; si `false`, solo nombres |
+
+## Caps (v1)
+
+- Máx. **1000** entradas visibles (tras filtro `all`).
+- Misma path policy que `cat` (`internal/policy`).
 
 ## Respuesta
 
-Texto markdown (`TextContent`).
+Un solo `TextContent`.
 
-### Modo simple (`list=false`)
+### Éxito
 
-```markdown
+```text
+[list path=<abs> entries=<returned>/<total> truncated=<bool> next=<entry-offset>]
 |File|
 |---|
 |nombre|
 ```
 
-Cada fila se genera desde `fileInfo` con solo `Name` poblado (el resto en cero/vacío en el formato de fila).
+Con `list=true`:
 
-### Modo detallado (`list=true`)
-
-Cabecera:
-
-```markdown
+```text
+[list path=<abs> entries=<returned>/<total> truncated=<bool>]
 |Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|
 |---|---|---|---|---|---|---|---|---|
+|...|
 ```
 
-Columnas:
+- `truncated=false` → se puede omitir `next`.
+- v1 no expone arg de paginación de entradas; `truncated=true` señala que hay más.
 
-| Columna | Origen |
-|---------|--------|
-| Name | `DirEntry.Name()` |
-| Size | `FileInfo.Size()` |
-| Mode | `FileInfo.Mode()` |
-| Owner | UID vía `syscall.Stat_t` + `user.LookupId` |
-| Group | GID vía `syscall.Stat_t` + `user.LookupId` |
-| ModTime | `FileInfo.ModTime()` |
-| IsDir | `DirEntry.IsDir()` |
-| IsSymlink | `DirEntry.Type() == os.ModeSymlink` |
-| SymlinkPath | `os.Readlink` si es symlink |
+### Bloqueo (IsError)
+
+```text
+[blocked class=path_denied path=<abs>]
+```
 
 ## Comportamiento
 
-1. `os.ReadDir(path)`.
+1. `policy.CheckPath` antes de `ReadDir`.
 2. Filtra ocultos salvo `all=true`.
-3. Con `list=true`, resuelve dueño/grupo y opcionalmente destino del symlink.
-4. Errores de `Info`, lookup de usuario o `Readlink` (salvo not-exist) abortan la tool con error.
+3. Corta a 1000 entradas; meta `ListHeader` + filas en `strings.Builder`.
+4. Symlink: `os.Readlink(filepath.Join(dir, name))` (no basename/CWD).
+5. Grupo: `user.LookupGroupId` (GID); owner: `user.LookupId` (UID). Si el lookup falla, se usa el id numérico.
 
 ## Ejemplos
 
-**Solo nombres, sin ocultos**
+**Solo nombres**
 
 ```json
-{
-  "path": "/home/user",
-  "all": false,
-  "list": false
-}
+{ "path": "/home/user", "all": false, "list": false }
 ```
 
-**Detalle estilo `ls -l`, con ocultos**
+**Detalle**
 
 ```json
-{
-  "path": "/var/log",
-  "all": true,
-  "list": true
-}
+{ "path": "/var/log", "all": true, "list": true }
 ```
 
 ## Notas / límites
 
-- Orientada a Linux: usa `syscall.Stat_t` (no portable a todos los GOOS).
-- Lookup de grupo usa `user.LookupId` con el GID (misma API que UID); en algunos sistemas el nombre de grupo puede no resolverse como se espera.
-- `Readlink` recibe `file.Name()` (nombre relativo); si el CWD del proceso no es `path`, el symlink puede fallar o resolverse mal.
-- Relacionada en el grafo: `ListFiles` → `ListFilesArgs`, `CallToolRequest`, `CallToolResult`; registro vía `AddListFilesTool` desde `NewHandler`.
+- Orientada a Linux (`syscall.Stat_t`).
+- Relacionada: `internal/policy`, `internal/toolmeta`.

@@ -67,10 +67,12 @@ El handler incluye CORS para que Inspector (browser) pueda conectar.
 
 | Tool | Descripción | Documentación |
 |------|-------------|---------------|
-| `cat` | Lee el contenido de un archivo (`path`) | [docs/tools/cat.md](docs/tools/cat.md) |
-| `list` | Lista archivos de un directorio (`path`, `all`, `list`) en markdown | [docs/tools/list.md](docs/tools/list.md) |
+| `cat` | Lee archivo de texto acotado (meta + body; caps 100 líneas ∩ 64 KiB) | [docs/tools/cat.md](docs/tools/cat.md) |
+| `list` | Lista directorio (meta + tabla markdown; cap 1000) | [docs/tools/list.md](docs/tools/list.md) |
 
 Índice y convención de documentación: [docs/README.md](docs/README.md).
+
+Instalación como servicio: [docs/runbooks/install-systemd.md](docs/runbooks/install-systemd.md) (unit en `deploy/systemd/linux-mcp.service`).
 
 Toda tool nueva o modificada debe documentarse en `docs/tools/` (regla OpenSpec en `openspec/config.yaml`).
 
@@ -80,7 +82,11 @@ Toda tool nueva o modificada debe documentarse en `docs/tools/` (regla OpenSpec 
 cmd/linux-mcp/       # entrypoint
 internal/handler/     # servidor MCP + CORS
 internal/tool/        # tools (cat, list)
+internal/policy/      # denylist, sniff, lectura acotada
+internal/toolmeta/    # headers de respuesta
 docs/tools/           # documentación por tool
+docs/runbooks/        # runbooks (systemd, etc.)
+deploy/systemd/       # unit de referencia
 taskfiles/            # builds por OS/ARCH
 Taskfile.yml          # build principal
 openspec/             # configuración OpenSpec

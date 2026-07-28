@@ -19,8 +19,14 @@ Fuente del grafo de código: `graphify-out/` (`NewHandler` → tools).
 
 | Tool | Doc | Código |
 |------|-----|--------|
-| [`cat`](tools/cat.md) | Leer contenido de un archivo | `internal/tool/cat.go` |
-| [`list`](tools/list.md) | Listar archivos de un directorio (markdown) | `internal/tool/list.go` |
+| [`cat`](tools/cat.md) | Leer archivo texto acotado (meta + body) | `internal/tool/cat.go` |
+| [`list`](tools/list.md) | Listar directorio (meta + markdown) | `internal/tool/list.go` |
+
+## Runbooks
+
+| Runbook | Descripción |
+|---------|-------------|
+| [Instalar con systemd](runbooks/install-systemd.md) | Usuario `mcp-agent`, unit, enable, update, uninstall |
 
 ## Convención
 

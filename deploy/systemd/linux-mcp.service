@@ -1,0 +1,40 @@
+[Unit]
+Description=linux-mcp filesystem MCP server (read-oriented ops agent)
+Documentation=https://github.com/KaribuLab/linux-mcp
+After=network.target
+
+[Service]
+Type=simple
+User=mcp-agent
+Group=mcp-agent
+ExecStart=/usr/local/bin/linux-mcp
+Restart=on-failure
+RestartSec=2
+
+# Elevated read for ops visibility; app-level denylist remains mandatory.
+AmbientCapabilities=CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+NoNewPrivileges=true
+
+# Write hardening: read-mostly agent.
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Complement (not substitute) for in-process path policy.
+InaccessiblePaths=/etc/shadow /etc/gshadow /root
+
+# Bind to localhost only is configured in the binary (ListenAndServe localhost:5000).
+
+[Install]
+WantedBy=multi-user.target
