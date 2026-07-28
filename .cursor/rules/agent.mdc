@@ -1,0 +1,14 @@
+---
+description: Reglas de trabajo para agentes en linux-mcp
+alwaysApply: true
+---
+
+# Reglas de trabajo
+
+Antes de empezar, lee `AGENTS.md`, `rules/engram.md` y `rules/graphify.md`.
+
+- Inicio de sesión: recupera contexto de Engram (`mem_context`, `mem_search`; busca `topic_key: project:linux-mcp:current-state`).
+- Durante el trabajo: guarda decisiones, bugs, convenciones y descubrimientos en Engram.
+- Para preguntas de arquitectura/relaciones/flujo: usa Graphify primero (`graphify-out/graph.json` o `graphify query`).
+- Cierre de sesión: llama `mem_session_summary`.
+- No guardes secretos en Engram. Usa español neutro.

@@ -1,0 +1,15 @@
+---
+description: Uso estándar de Engram en linux-mcp
+alwaysApply: true
+---
+
+# Engram
+
+Aplica las reglas completas de `rules/engram.md`.
+
+- Guarda proactivamente decisiones, bugs, convenciones, descubrimientos y preferencias.
+- Usa `topic_key: project:linux-mcp:<tema>` (por ejemplo: `current-state`, `architecture`, `conventions`, `bugs`, `openspec:<id>`, `graphify`, `security`).
+- Formato: `title`, `type`, `scope: project`, `content` con **What**, **Why**, **Where**, **Learned**.
+- Inicio: `mem_session_start` + `mem_search`/`mem_context`.
+- Cierre: `mem_session_summary`.
+- Nunca guardes secretos, tokens ni credenciales.

@@ -1,0 +1,14 @@
+---
+description: Uso de Graphify para reducir tokens en linux-mcp
+alwaysApply: true
+---
+
+# Graphify
+
+Aplica las reglas completas de `rules/graphify.md`.
+
+- Si `graphify-out/graph.json` existe, consulta el grafo antes de greppear: `graphify query "<pregunta>"`.
+- Usa `graphify-out/GRAPH_REPORT.md` para identificar God Nodes y comunidades relevantes.
+- Para repos pequeños o una sola línea, lee directamente.
+- Actualiza el grafo tras cambios grandes: `graphify --update .`.
+- Cita `source_location` cuando uses el grafo.
