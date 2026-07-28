@@ -4,7 +4,7 @@ schema: spec-driven
 context: |
   Proyecto: linux-mcp (github.com/KaribuLab/linux-mcp)
   Qué es: servidor MCP que expone tools de sistema de archivos Linux a clientes
-  (Cursor, Claude, MCP Inspector, etc.) vía Model Context Protocol.
+  (Claude, Codex, OpenCode, MCP Inspector, etc.) vía Model Context Protocol.
 
   Stack:
   - Lenguaje: Go 1.26+
@@ -42,5 +42,6 @@ rules:
     - Requisitos de tools deben ser verificables contra docs/tools/ y el código en internal/tool
   tasks:
     - Toda task que añada o modifique una tool MCP debe incluir subtarea explícita de documentarla en docs/tools/<nombre>.md y actualizar docs/README.md
-    - No marcar complete una tool sin documentación alineada al comportamiento real del código
+    - Toda task que añada o modifique un comando de CLI debe incluir subtarea explícita de documentarlo en docs/commands/<nombre>.md (flags, defaults, salida y códigos de error) y actualizar docs/README.md
+    - No marcar complete una tool ni un comando sin documentación alineada al comportamiento real del código
     - Preferir chunks de trabajo acotados (ideal ≤ 2 horas)

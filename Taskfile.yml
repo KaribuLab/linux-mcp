@@ -4,20 +4,21 @@ vars:
   APP: linux-mcp
   BIN_DIR: dist
   PKG: ./cmd/linux-mcp
+  # Local issuance socket; tmp/ is excluded from air's watcher.
+  SOCKET: ./tmp/issue.sock
+  # Por defecto la versión sale de git. El pipeline la fija con la del tag:
+  # VERSION=v1.2.3 task build:all
+  VERSION:
+    sh: echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
+  VERSION_PKG: github.com/KaribuLab/linux-mcp/internal/command.version
 
+# Solo Linux: la emisión de tokens usa SO_PEERCRED y /proc, que no existen en
+# otros sistemas operativos.
 includes:
   linux_amd64:
     taskfile: ./taskfiles/linux_amd64.yml
   linux_arm64:
     taskfile: ./taskfiles/linux_arm64.yml
-  darwin_amd64:
-    taskfile: ./taskfiles/darwin_amd64.yml
-  darwin_arm64:
-    taskfile: ./taskfiles/darwin_arm64.yml
-  windows_amd64:
-    taskfile: ./taskfiles/windows_amd64.yml
-  windows_arm64:
-    taskfile: ./taskfiles/windows_arm64.yml
 
 tasks:
   default:
@@ -25,20 +26,29 @@ tasks:
     cmds:
       - task --list
 
-  build:
-    desc: Build para el OS/ARCH del host
+  dev:
+    desc: Servidor con recarga (air), socket local en tmp/
     cmds:
-      - task: "{{OS}}_{{ARCH}}:build"
+      - mkdir -p tmp
+      - go tool air
+
+  token:
+    desc: Genera un token contra el servidor local (usa TTL=1h para acortarlo)
+    vars:
+      TTL: '{{.TTL | default "8h"}}'
+    cmds:
+      - go run {{.PKG}} auth --socket {{.SOCKET}} --ttl {{.TTL}}
+
+  build:
+    desc: Build para la arquitectura del host
+    cmds:
+      - task: "linux_{{ARCH}}:build"
 
   build:all:
-    desc: Build para todas las plataformas
+    desc: Build para linux/amd64 y linux/arm64
     deps:
       - linux_amd64:build
       - linux_arm64:build
-      - darwin_amd64:build
-      - darwin_arm64:build
-      - windows_amd64:build
-      - windows_arm64:build
 
   clean:
     desc: Elimina binarios generados

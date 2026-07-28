@@ -1,8 +1,4 @@
-## Purpose
-
-Reference systemd unit and install runbook so operators can deploy linux-mcp as a hardened read-oriented service without inventing the unit from scratch.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Systemd unit file shipped in repository
 The repository MUST include a reference systemd unit at `deploy/systemd/linux-mcp.service` that runs the service as user `mcp-agent`, sets `ExecStart` to the documented binary path **invoking the `serve` subcommand**, grants only `CAP_DAC_READ_SEARCH` via ambient/bounding capabilities, and applies write-hardening directives suitable for a read-oriented ops agent.
@@ -42,12 +38,7 @@ The runbook MUST additionally document creating the `mcp-admin` group, adding op
 - **WHEN** an operator hits a permission error running `linux-mcp auth`
 - **THEN** the runbook troubleshooting section MUST list stale group membership as a cause and re-login as the remedy
 
-### Requirement: Docs index links the runbook
-`docs/README.md` and the project `README.md` MUST link to the systemd install runbook so operators can discover it.
-
-#### Scenario: README points to runbook
-- **WHEN** a reader opens the project README or docs index
-- **THEN** there MUST be a link to `docs/runbooks/install-systemd.md` (or equivalent relative path)
+## ADDED Requirements
 
 ### Requirement: Runbook documents obtaining a token and connecting a client
 The install runbook MUST document how an operator obtains a token with `linux-mcp auth`, how to reach the server through an SSH tunnel to loopback, and how to supply the token to an MCP client as an `Authorization: Bearer` header. It MUST state that tokens are invalidated when the service restarts.

@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+      "linux-mcp": {
+        "type": "http",
+        "url": "http://localhost:5000",
+        "headers": {
+          "Authorization": "Bearer ${LINUX_MCP_TOKEN}"
+        }
+      }
+    }
+  }

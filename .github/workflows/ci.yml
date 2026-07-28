@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build, análisis y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # git describe necesita el historial y las tags para la versión.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Tests
+        run: go test -race ./...
+
+      # systemd-analyze exige que ExecStart exista, así que el binario se
+      # instala en la ruta que declara la unit antes de validarla.
+      - name: Instalar el binario en la ruta de la unit
+        run: |
+          go build -o linux-mcp ./cmd/linux-mcp
+          sudo install -m 0755 linux-mcp /usr/local/bin/linux-mcp
+
+      - name: Validar la unit de systemd
+        run: systemd-analyze verify deploy/systemd/linux-mcp.service
+
+      - name: Compilar binarios linux/amd64 y linux/arm64
+        run: go tool task build:all
+
+      - name: Publicar los binarios del run
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-mcp-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

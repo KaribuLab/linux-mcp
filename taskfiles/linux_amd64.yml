@@ -3,6 +3,10 @@ version: "3"
 tasks:
   build:
     desc: Build linux/amd64
+    vars:
+      # Se resuelve al ejecutar la task, para que VERSION se pueda sobreescribir
+      # desde la línea de comandos.
+      LDFLAGS: -s -w -X {{.VERSION_PKG}}={{.VERSION}}
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - GOOS=linux GOARCH=amd64 go build -o {{.BIN_DIR}}/{{.APP}}-linux-amd64 {{.PKG}}
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "{{.LDFLAGS}}" -o {{.BIN_DIR}}/{{.APP}}-linux-amd64 {{.PKG}}

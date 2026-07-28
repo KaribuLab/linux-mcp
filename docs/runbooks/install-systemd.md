@@ -1,20 +1,30 @@
 # Instalar linux-mcp con systemd
 
-Runbook para desplegar el servidor MCP como servicio systemd con usuario `mcp-agent` y `CAP_DAC_READ_SEARCH`.
+Runbook para desplegar el servidor MCP como servicio systemd con usuario `mcp-agent`, `CAP_DAC_READ_SEARCH` y emisión de tokens restringida al grupo `mcp-admin`.
 
 La **policy de lectura en el proceso Go es obligatoria** aunque no uses systemd: la unit solo añade defensa en profundidad (`InaccessiblePaths`, hardening de escritura). El binario puede correr a mano sin esta unit.
+
+Dos identidades participan:
+
+| Identidad | Para qué |
+|-----------|----------|
+| `mcp-agent` (usuario) | Corre el servicio y es dueño del socket de emisión |
+| `mcp-admin` (grupo) | Lista de operadores autorizados a ejecutar `linux-mcp auth` |
 
 ## Requisitos
 
 - Linux con systemd
 - Go 1.26+ (para build) o un binario ya compilado
-- Privilegios root para crear usuario, instalar unit y capability ambient
+- Privilegios root para crear usuario y grupo, instalar unit y capability ambient
 
 ## 1. Crear usuario y grupo
 
 ```bash
 sudo useradd --system --home /nonexistent --shell /usr/sbin/nologin mcp-agent
+sudo groupadd --system mcp-admin
 ```
+
+El grupo `mcp-admin` debe existir **antes** de arrancar el servicio: la unit lo declara en `SupplementaryGroups` y `serve` falla al arrancar si no puede resolverlo.
 
 ## 2. Build e instalar el binario
 
@@ -32,6 +42,8 @@ go build -o /tmp/linux-mcp ./cmd/linux-mcp
 sudo install -m 0755 /tmp/linux-mcp /usr/local/bin/linux-mcp
 ```
 
+También puedes descargar un binario publicado desde [Releases](https://github.com/KaribuLab/linux-mcp/releases) y verificar su checksum contra `SHA256SUMS`.
+
 ## 3. Instalar y habilitar la unit
 
 ```bash
@@ -44,13 +56,90 @@ sudo systemctl enable --now linux-mcp.service
 
 ```bash
 systemctl status linux-mcp.service
-curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:5000
 journalctl -u linux-mcp.service -n 50 --no-pager
 ```
 
-El servicio escucha en `localhost:5000` (Streamable HTTP).
+El endpoint MCP responde `401` sin token, que es justamente la señal de que está vivo y protegido:
 
-## 5. Actualizar
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5000
+# 401
+```
+
+El socket de emisión debe quedar así:
+
+```bash
+sudo ls -l /run/linux-mcp/issue.sock
+# srw-rw---- 1 mcp-agent mcp-admin 0 ... /run/linux-mcp/issue.sock
+```
+
+Si el modo no es `0660` o el grupo no es `mcp-admin`, ningún operador podrá pedir tokens (o los podrá pedir de más).
+
+## 5. Autorizar operadores
+
+```bash
+sudo usermod -aG mcp-admin maria
+```
+
+La membresía de grupo se resuelve al iniciar sesión: **maria debe cerrar sesión y volver a entrar** (o abrir una sesión SSH nueva) para que el cambio tenga efecto. `id -nG` en la sesión vieja seguirá mostrando la lista anterior.
+
+Para revocar el acceso a emitir tokens:
+
+```bash
+sudo gpasswd -d maria mcp-admin
+```
+
+Los tokens que maria ya tenía siguen siendo válidos hasta que expiren o hasta que se reinicie el servicio.
+
+## 6. Conectarse desde un cliente
+
+### 6.1 Obtener el token
+
+En el host donde corre el servicio, como usuario del grupo `mcp-admin`:
+
+```bash
+TOKEN=$(linux-mcp auth --ttl 8h)
+```
+
+El token sale por stdout y todo lo demás (subject y expiración) por stderr, así que la captura anterior deja solo el token en la variable. El token identifica a quien ejecutó el comando: no hay forma de pedir uno a nombre de otra persona.
+
+### 6.2 Abrir el túnel SSH
+
+El servidor solo escucha en `127.0.0.1`, así que desde tu máquina:
+
+```bash
+ssh -N -L 5000:127.0.0.1:5000 usuario@host-del-servicio
+```
+
+Mientras el túnel esté arriba, `http://localhost:5000` en tu máquina llega al MCP.
+
+### 6.3 Configurar el cliente MCP
+
+Transporte **Streamable HTTP**, URL `http://localhost:5000`, y el token en el header:
+
+```json
+{
+  "url": "http://localhost:5000",
+  "headers": { "Authorization": "Bearer <token>" }
+}
+```
+
+La configuración exacta por cliente está en [`docs/agents/`](../agents/): [Claude Code](../agents/claude.md), [Codex CLI](../agents/codex.md), [OpenCode](../agents/opencode.md).
+
+### 6.4 Qué pasa al reiniciar el servicio
+
+La clave que firma los tokens se genera en memoria al arrancar y nunca toca disco. **Reiniciar el servicio invalida todos los tokens emitidos**: cada operador debe volver a ejecutar `linux-mcp auth`. Ese es también el único mecanismo de revocación masiva disponible.
+
+## 7. Actualizar
+
+Si cambió la unit, instálala **antes** de reiniciar; de lo contrario el servicio se reinicia con la definición vieja:
+
+```bash
+sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-mcp.service
+sudo systemctl daemon-reload
+```
+
+Luego el binario:
 
 ```bash
 go tool task build
@@ -58,34 +147,34 @@ sudo install -m 0755 dist/linux-mcp-$(go env GOOS)-$(go env GOARCH) /usr/local/b
 sudo systemctl restart linux-mcp.service
 ```
 
-Si cambió la unit:
+Avisa a los operadores: después del reinicio necesitan un token nuevo.
 
-```bash
-sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-mcp.service
-sudo systemctl daemon-reload
-sudo systemctl restart linux-mcp.service
-```
-
-## 6. Desinstalar
+## 8. Desinstalar
 
 ```bash
 sudo systemctl disable --now linux-mcp.service
 sudo rm -f /etc/systemd/system/linux-mcp.service
 sudo systemctl daemon-reload
 sudo rm -f /usr/local/bin/linux-mcp
-# opcional: sudo userdel mcp-agent
+# opcional: sudo userdel mcp-agent && sudo groupdel mcp-admin
 ```
 
 ## Troubleshooting
 
-| Síntoma | Qué revisar |
-|---------|-------------|
-| `permission denied` al leer configs de sistema | `CAP_DAC_READ_SEARCH` en la unit; `getpcaps` / `systemctl show linux-mcp` |
-| Servicio no arranca | `journalctl -u linux-mcp`; binario en `/usr/local/bin/linux-mcp`; usuario `mcp-agent` existe |
-| `cat`/`list` bloquean paths | Esperado: denylist en app (`/etc/shadow`, keys, etc.). Systemd `InaccessiblePaths` es complemento |
-| Inspector no conecta | CORS ya va en el handler; URL `http://localhost:5000`; el servicio solo escucha localhost |
+| Síntoma | Causa probable | Qué hacer |
+|---------|----------------|-----------|
+| `permission denied` al ejecutar `linux-mcp auth` | La membresía en `mcp-admin` no está refrescada en la sesión actual | `id -nG` para confirmar; cerrar sesión y volver a entrar |
+| `permission denied` incluso tras re-login | El socket no quedó en `0660 mcp-agent:mcp-admin` | `ls -l /run/linux-mcp/issue.sock`; revisar `SupplementaryGroups` en la unit y reiniciar |
+| `no socket at /run/linux-mcp/issue.sock` | El servicio no está corriendo, o la unit no declara `RuntimeDirectory=linux-mcp` | `systemctl status linux-mcp`; `journalctl -u linux-mcp` |
+| El servicio no arranca y el log menciona el grupo | `mcp-admin` no existe | `sudo groupadd --system mcp-admin` y reiniciar |
+| `401` desde el cliente con un token que antes servía | El token expiró o el servicio se reinició | Volver a ejecutar `linux-mcp auth` |
+| `403 origin not allowed` | Un cliente de browser manda un `Origin` fuera del allowlist | El log del servicio trae el origen exacto; añadirlo con `--cors` |
+| `403 host not allowed` | El header `Host` no coincide con el `--addr` del servicio | Usar `localhost:5000` o `127.0.0.1:5000` a través del túnel, sin proxies que reescriban `Host` |
+| `permission denied` al leer configs de sistema | Falta `CAP_DAC_READ_SEARCH` | `systemctl show linux-mcp`; revisar la unit |
+| `cat`/`list` bloquean paths | Esperado: denylist en app (`/etc/shadow`, keys, etc.) | Systemd `InaccessiblePaths` es complemento, no sustituto |
 
 ## Referencias
 
 - Unit: [`deploy/systemd/linux-mcp.service`](../../deploy/systemd/linux-mcp.service)
+- Comandos: [`docs/commands/serve.md`](../commands/serve.md), [`docs/commands/auth.md`](../commands/auth.md)
 - Tools: [`docs/tools/cat.md`](../tools/cat.md), [`docs/tools/list.md`](../tools/list.md)

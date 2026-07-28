@@ -1,42 +1,68 @@
 package handler
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
-	"slices"
 
+	"github.com/KaribuLab/linux-mcp/internal/token"
 	"github.com/KaribuLab/linux-mcp/internal/tool"
+	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func NewHandler() http.Handler {
+// Config assembles the MCP endpoint. Verifier and Addr are required: without a
+// verifier there is no way to authenticate callers, and without the listen
+// address the Host header cannot be validated.
+type Config struct {
+	Verifier *token.Signer
+	// Addr is the address serve listens on, used to validate the Host header.
+	Addr string
+	// Origins is the browser origin allowlist. The zero value allows none.
+	Origins Origins
+	Logger  *slog.Logger
+}
+
+func (c Config) logger() *slog.Logger {
+	if c.Logger != nil {
+		return c.Logger
+	}
+	return slog.Default()
+}
+
+func NewHandler(cfg Config) (http.Handler, error) {
+	if cfg.Verifier == nil {
+		return nil, errors.New("handler requires a token verifier")
+	}
+	host, err := newHostCheck(cfg.Addr)
+	if err != nil {
+		return nil, err
+	}
+
 	server := mcp.NewServer(&mcp.Implementation{Name: "linux-mcp"}, nil)
 
 	tool.AddCatFileTool(server)
 	tool.AddListFilesTool(server)
+	server.AddReceivingMiddleware(auditMiddleware(cfg.logger()))
 
-	return withCORS(mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {
+	mcpHandler := mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {
 		return server
-	}, nil))
+	}, nil)
+
+	requireToken := auth.RequireBearerToken(tokenVerifier(cfg.Verifier), bearerOptions())
+
+	// Host first: a rebinding attempt must be stopped even on a preflight.
+	return withHostCheck(
+		withCORS(requireToken(mcpHandler), cfg.Origins, cfg.logger()),
+		host, cfg.logger(),
+	), nil
 }
 
-func withCORS(next http.Handler, allowedOrigins ...string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if len(allowedOrigins) > 0 {
-			if !slices.Contains(allowedOrigins, origin) {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-		}
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID")
-		w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
-		w.Header().Set("Vary", "Origin")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+// bearerOptions are the requirements every request must satisfy.
+//
+// ResourceMetadataURL is left empty on purpose: this server has no OAuth
+// authorization server to discover, and advertising one would send clients on
+// a pointless round trip. Tokens come from the linux-mcp auth command.
+func bearerOptions() *auth.RequireBearerTokenOptions {
+	return &auth.RequireBearerTokenOptions{Scopes: []string{token.ScopeRead}}
 }

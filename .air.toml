@@ -6,7 +6,9 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = []
+  # Cobra no acepta "--socket-group" seguido de "" como argumento separado;
+  # hay que pasar el valor vacío con = para dejar el socket en 0600 en local.
+  args_bin = ["serve", "--socket", "./tmp/issue.sock", "--socket-group="]
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ./cmd/linux-mcp"
   delay = 1000
