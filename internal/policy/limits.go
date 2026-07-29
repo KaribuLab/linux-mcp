@@ -5,6 +5,12 @@ const (
 	MaxLines       = 100
 	MaxBytes       = 64 * 1024
 	MaxListEntries = 1000
+	// MaxFindMatches bounds rows returned by find, independent of the shared
+	// walk's node budget (DefaultMaxNodes).
+	MaxFindMatches = 1000
+	// MaxGrepMatches bounds rows returned by grep, independent of the shared
+	// walk's node budget (DefaultMaxNodes) for directory targets.
+	MaxGrepMatches = 1000
 	// PrefixBytes is the bounded window used for binary NUL check and private-key sniff.
 	PrefixBytes = 8 * 1024
 )

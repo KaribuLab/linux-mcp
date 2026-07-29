@@ -16,7 +16,9 @@ cmd/linux-mcp/main.go
        │         ├─ RequireBearerToken        # scope mcp:read
        │         └─ mcp.NewStreamableHTTPHandler → 127.0.0.1:5000
        │              ├─ tool.AddCatFileTool
-       │              └─ tool.AddListFilesTool
+       │              ├─ tool.AddListFilesTool
+       │              ├─ tool.AddFindFilesTool
+       │              └─ tool.AddGrepTool
        └─ auth                                # pide el token por el socket
 ```
 
@@ -33,6 +35,8 @@ cmd/linux-mcp/main.go
 |------|-----|--------|
 | [`cat`](tools/cat.md) | Leer archivo texto acotado (meta + body) | `internal/tool/cat.go` |
 | [`list`](tools/list.md) | Listar directorio (meta + markdown) | `internal/tool/list.go` |
+| [`find`](tools/find.md) | Buscar entradas por metadata en un árbol (meta + markdown, columnas configurables) | `internal/tool/find.go` |
+| [`grep`](tools/grep.md) | Buscar un patrón en un archivo o árbol (meta + filas de texto) | `internal/tool/grep.go` |
 
 ## Agentes
 
