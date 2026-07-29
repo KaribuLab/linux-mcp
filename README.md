@@ -123,6 +123,8 @@ ssh -N -L 5000:127.0.0.1:5000 usuario@host-del-servicio
 |------|-------------|---------------|
 | `cat` | Lee archivo de texto acotado (meta + body; caps 100 líneas ∩ 64 KiB) | [docs/tools/cat.md](docs/tools/cat.md) |
 | `list` | Lista directorio (meta + tabla markdown; cap 1000) | [docs/tools/list.md](docs/tools/list.md) |
+| `find` | Busca entradas por metadata en un árbol (meta + tabla markdown, columnas configurables; cap 1000/50.000 nodos) | [docs/tools/find.md](docs/tools/find.md) |
+| `grep` | Busca un patrón en un archivo o árbol, literal o RE2 (meta + filas de texto; private-key redactado, no bloqueado) | [docs/tools/grep.md](docs/tools/grep.md) |
 
 Índice y convención de documentación: [docs/README.md](docs/README.md).
 
@@ -138,8 +140,8 @@ internal/command/     # CLI cobra (serve, auth)
 internal/handler/     # servidor MCP + Host/CORS + bearer
 internal/token/       # emisión y verificación de JWT
 internal/issuer/      # socket unix de emisión (SO_PEERCRED)
-internal/tool/        # tools (cat, list)
-internal/policy/      # denylist, sniff, lectura acotada
+internal/tool/        # tools (cat, list, find, grep)
+internal/policy/      # denylist, sniff, lectura acotada, recorrido de árbol acotado (walk)
 internal/toolmeta/    # headers de respuesta
 docs/commands/        # documentación por comando
 docs/tools/           # documentación por tool

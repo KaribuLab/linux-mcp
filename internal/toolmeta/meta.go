@@ -69,6 +69,61 @@ func (h ListHeader) String() string {
 	return b.String()
 }
 
+// FindHeader is the success metadata line for find.
+type FindHeader struct {
+	Path      string
+	Returned  int
+	Total     int
+	Truncated bool
+	Visited   int
+}
+
+func (h FindHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[find path=")
+	b.WriteString(h.Path)
+	b.WriteString(" matches=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	b.WriteString(" visited=")
+	b.WriteString(strconv.Itoa(h.Visited))
+	b.WriteByte(']')
+	return b.String()
+}
+
+// GrepHeader is the success metadata line for grep.
+type GrepHeader struct {
+	Path         string
+	Returned     int
+	Total        int
+	Truncated    bool
+	FilesScanned int
+	// Redacted counts matching rows whose content came from a file classified
+	// as private-key and was replaced by a fixed redaction placeholder.
+	Redacted int
+}
+
+func (h GrepHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[grep path=")
+	b.WriteString(h.Path)
+	b.WriteString(" matches=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	b.WriteString(" filesScanned=")
+	b.WriteString(strconv.Itoa(h.FilesScanned))
+	b.WriteString(" redacted=")
+	b.WriteString(strconv.Itoa(h.Redacted))
+	b.WriteByte(']')
+	return b.String()
+}
+
 // Render concatenates header and optional body with a single allocation path.
 func Render(h fmt.Stringer, body *strings.Builder) string {
 	var out strings.Builder

@@ -170,6 +170,38 @@ func TestIssuedTokenCanCallATool(t *testing.T) {
 	}
 }
 
+func TestFindAndGrepToolsAreRegistered(t *testing.T) {
+	deployment := start(t)
+	issued := deployment.requestToken(t, "5m")
+	session := deployment.connect(t, issued.Token)
+
+	resp, err := session.ListTools(context.Background(), &mcp.ListToolsParams{})
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+
+	byName := make(map[string]*mcp.Tool, len(resp.Tools))
+	for _, tl := range resp.Tools {
+		byName[tl.Name] = tl
+	}
+
+	find, ok := byName["find"]
+	if !ok {
+		t.Fatal("find tool not registered")
+	}
+	if !strings.Contains(find.Description, "[find") {
+		t.Errorf("find description missing response contract: %s", find.Description)
+	}
+
+	grep, ok := byName["grep"]
+	if !ok {
+		t.Fatal("grep tool not registered")
+	}
+	if !strings.Contains(grep.Description, "[grep") {
+		t.Errorf("grep description missing response contract: %s", grep.Description)
+	}
+}
+
 func TestConnectionWithoutTokenIsRefused(t *testing.T) {
 	deployment := start(t)
 
