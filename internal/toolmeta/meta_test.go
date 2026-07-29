@@ -37,6 +37,21 @@ func TestListHeader(t *testing.T) {
 	}
 }
 
+func TestListHeaderWithColumns(t *testing.T) {
+	got := toolmeta.ListHeader{Path: "/tmp", Returned: 10, Total: 10, Truncated: false, Columns: "Name,Size"}.String()
+	want := "[list path=/tmp entries=10/10 truncated=false columns=Name,Size]"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestListHeaderWithoutColumnsOmitsField(t *testing.T) {
+	got := toolmeta.ListHeader{Path: "/tmp", Returned: 10, Total: 10, Truncated: false}.String()
+	if strings.Contains(got, "columns=") {
+		t.Fatalf("unexpected columns field: %s", got)
+	}
+}
+
 func TestRender(t *testing.T) {
 	var body strings.Builder
 	body.WriteString("hello\nworld")

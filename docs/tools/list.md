@@ -16,6 +16,22 @@ Lista entradas de un directorio con meta mínima y tabla markdown acotada (máx.
 | `path` | `string` | sí | Directorio a listar |
 | `all` | `bool` | no | Si `true`, incluye ocultos (prefijo `.`) |
 | `list` | `bool` | no | Si `true`, tabla detallada; si `false`, solo nombres |
+| `showSize` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `Size` |
+| `showMode` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `Mode` |
+| `showOwner` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `Owner` |
+| `showGroup` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `Group` |
+| `showModTime` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `ModTime` |
+| `showIsDir` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `IsDir` |
+| `showIsSymlink` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `IsSymlink` |
+| `showSymlinkPath` | `bool` (opcional, default `true`) | no | Solo aplica con `list=true`. Si `false`, oculta la columna `SymlinkPath` |
+
+### Selección de columnas (`show*`)
+
+- Pensados para ahorrar tokens en directorios con muchas entradas cuando el agente no necesita todas las columnas del modo detallado.
+- Todos son opcionales y por defecto `true` (columna visible); el agente solo necesita mandar los que quiere poner en `false`.
+- `Name` **no tiene flag**: siempre se incluye como primera columna, sin excepción.
+- El orden de columnas es siempre el fijo (`Name, Size, Mode, Owner, Group, ModTime, IsDir, IsSymlink, SymlinkPath`); los flags solo deciden inclusión/omisión, no reordenan.
+- Se ignoran silenciosamente cuando `list=false`.
 
 ## Caps (v1)
 
@@ -38,7 +54,7 @@ Un solo `TextContent`.
 Con `list=true`:
 
 ```text
-[list path=<abs> entries=<returned>/<total> truncated=<bool>]
+[list path=<abs> entries=<returned>/<total> truncated=<bool> columns=<c1,c2,...>]
 |Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|
 |---|---|---|---|---|---|---|---|---|
 |...|
@@ -46,6 +62,7 @@ Con `list=true`:
 
 - `truncated=false` → se puede omitir `next`.
 - v1 no expone arg de paginación de entradas; `truncated=true` señala que hay más.
+- `columns=` solo aparece cuando `list=true`; lista, en el orden de la tabla, las columnas efectivamente devueltas (todas por defecto, o el subconjunto resultante de los flags `show*`). Con `list=false` este campo no aparece.
 
 ### Bloqueo (IsError)
 
@@ -58,8 +75,9 @@ Con `list=true`:
 1. `policy.CheckPath` antes de `ReadDir`.
 2. Filtra ocultos salvo `all=true`.
 3. Corta a 1000 entradas; meta `ListHeader` + filas en `strings.Builder`.
-4. Symlink: `os.Readlink(filepath.Join(dir, name))` (no basename/CWD).
-5. Grupo: `user.LookupGroupId` (GID); owner: `user.LookupId` (UID). Si el lookup falla, se usa el id numérico.
+4. Con `list=true`, resuelve las columnas visibles a partir de los flags `show*` (`Name` siempre incluida) antes de construir el header y las filas.
+5. Symlink: `os.Readlink(filepath.Join(dir, name))` (no basename/CWD); solo se resuelve si `showSymlinkPath` está visible.
+6. Grupo: `user.LookupGroupId` (GID); owner: `user.LookupId` (UID). Si el lookup falla, se usa el id numérico. Solo se resuelven si `showOwner`/`showGroup` están visibles, respectivamente.
 
 ## Ejemplos
 
@@ -69,11 +87,19 @@ Con `list=true`:
 { "path": "/home/user", "all": false, "list": false }
 ```
 
-**Detalle**
+**Detalle completo**
 
 ```json
 { "path": "/var/log", "all": true, "list": true }
 ```
+
+**Detalle con columnas reducidas (ahorro de tokens)**
+
+```json
+{ "path": "/var/log", "list": true, "showOwner": false, "showGroup": false, "showModTime": false, "showIsSymlink": false, "showSymlinkPath": false }
+```
+
+Devuelve solo `Name|Size|Mode|IsDir|`.
 
 ## Notas / límites
 
