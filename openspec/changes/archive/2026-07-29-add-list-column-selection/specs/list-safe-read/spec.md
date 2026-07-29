@@ -1,22 +1,4 @@
-## Purpose
-
-Safe, bounded `list` tool behavior: shared path policy, entry caps, metadata + markdown table response, symlink/group fixes, and agent-facing MCP tool description.
-
-## Requirements
-
-### Requirement: List applies the shared path policy
-The `list` tool MUST apply the same in-process path denylist as other read tools before calling `ReadDir`. Denied paths MUST NOT return directory listings. Behavior MUST be documented in `docs/tools/list.md`.
-
-#### Scenario: List denied path
-- **WHEN** a caller invokes `list` on a denylisted path
-- **THEN** the tool MUST reject the request without listing entries
-
-### Requirement: List caps directory entries
-The `list` tool MUST bound returned entries to at most 1000. When the directory has more entries than the cap, the tool MUST indicate truncation and MUST NOT attempt to render an unbounded listing.
-
-#### Scenario: Huge directory truncated
-- **WHEN** `list` is invoked on a directory with more than 1000 entries
-- **THEN** the response MUST include at most 1000 entry rows and MUST signal truncation
+## ADDED Requirements
 
 ### Requirement: List supports per-column visibility flags in detailed mode
 When invoked with `list=true`, the `list` tool MUST accept eight optional boolean arguments, one per detailed column except `Name`: `showSize`, `showMode`, `showOwner`, `showGroup`, `showModTime`, `showIsDir`, `showIsSymlink`, `showSymlinkPath`. Each flag MUST default to visible (`true`) when omitted. When a flag is explicitly set to `false`, its corresponding column MUST be excluded from the response table. Column order MUST always be the fixed default order (`Name, Size, Mode, Owner, Group, ModTime, IsDir, IsSymlink, SymlinkPath`), filtered to only the visible columns; flags MUST NOT reorder columns. These flags MUST be ignored when `list=false`.
@@ -44,6 +26,8 @@ When `list=true`, the `list` tool MUST always include the `Name` column as the f
 - **WHEN** `list` is invoked with `list=true` and every other `show*` flag set to `false`
 - **THEN** the response table MUST still contain the `Name` column as its only column
 
+## MODIFIED Requirements
+
 ### Requirement: List response starts with a metadata header
 The `list` tool MUST return a single text payload whose first line is a compact metadata header in the form `[list …]` (including at least `path`, entry counts, and `truncated`), followed by the markdown table body. When `list=true`, the metadata header MUST also include a `columns=<c1,c2,...>` field listing the effective columns returned, in table order (the full default set when no `show*` flags were set to `false`, or the filtered subset otherwise). When `list=false`, the metadata header MUST NOT include the `columns` field. When the request is blocked by path policy, the tool MUST return a short `[blocked class=… path=…]` line without listing entries.
 
@@ -62,27 +46,6 @@ The `list` tool MUST return a single text payload whose first line is a compact 
 #### Scenario: Simple list metadata omits columns field
 - **WHEN** `list` is invoked with `list=false`
 - **THEN** the `[list …]` metadata line MUST NOT include a `columns=` field
-
-### Requirement: List MCP tool description explains the full markdown response pattern
-The MCP `Tool.Description` for `list` MUST describe the full agent-facing response contract: `[list …]` metadata line, that the body is a **markdown table** after that line (including that `list=false` vs `list=true` change columns), entry cap / truncation when applicable, and `[blocked class=… path=…]` without rows. A one-line description such as only "List the files in a directory in markdown format" is NOT sufficient unless it also covers meta and blocked forms.
-
-#### Scenario: Agent-facing description covers list response contract
-- **WHEN** a client lists tools from the MCP server
-- **THEN** the `list` tool description MUST mention the `[list …]` metadata line, the markdown table body that follows, and the `[blocked …]` rejection form
-
-### Requirement: List resolves symlink targets from the listed directory
-When resolving symlink targets for detailed listings, the tool MUST join the listed directory path with the entry name before `Readlink`. It MUST NOT call `Readlink` with only the basename relative to the process CWD.
-
-#### Scenario: Symlink target under listed path
-- **WHEN** `list` is invoked with `list=true` on a directory containing a symlink and the process CWD is not that directory
-- **THEN** the tool MUST resolve the symlink using `filepath.Join(dir, name)` (or equivalent) so the target resolution is relative to the listed directory
-
-### Requirement: List resolves group names from GID
-When detailed listing includes group ownership, the tool MUST look up the group using the GID (group lookup API), not the UID lookup API with a GID value.
-
-#### Scenario: Group column uses group database
-- **WHEN** `list` is invoked with `list=true` on a directory the process can stat
-- **THEN** the Group column MUST come from a group-id lookup for the entry GID
 
 ### Requirement: List documentation matches behavior
 `docs/tools/list.md` MUST describe path policy, entry caps, the `[list …]` metadata header (including the `columns=` field when `list=true`), blocked responses, truncation signaling, symlink resolution, group lookup, and the eight `show*` visibility arguments (their default of `true`, that `Name` cannot be hidden, and that column order is always fixed), consistent with the implementation and the MCP tool description. `docs/README.md` MUST remain consistent if the tool summary changes.

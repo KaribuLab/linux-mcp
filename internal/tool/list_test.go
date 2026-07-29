@@ -102,3 +102,109 @@ func TestListToolDescriptionContract(t *testing.T) {
 		}
 	}
 }
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestListFilesDefaultColumnsUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := tool.ListFiles(context.Background(), nil, tool.ListFilesArgs{Path: dir, List: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := textOf(t, res)
+	if !strings.Contains(got, "|Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|") {
+		t.Fatalf("missing default header: %s", got)
+	}
+	if !strings.Contains(got, "columns=Name,Size,Mode,Owner,Group,ModTime,IsDir,IsSymlink,SymlinkPath") {
+		t.Fatalf("missing default columns in meta: %s", got)
+	}
+}
+
+func TestListFilesHidesSelectedColumns(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := tool.ListFiles(context.Background(), nil, tool.ListFilesArgs{
+		Path: dir, List: true,
+		ShowSize:    boolPtr(false),
+		ShowModTime: boolPtr(false),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := textOf(t, res)
+	if !strings.Contains(got, "|Name|Mode|Owner|Group|IsDir|IsSymlink|SymlinkPath|") {
+		t.Fatalf("missing filtered header: %s", got)
+	}
+	if !strings.Contains(got, "columns=Name,Mode,Owner,Group,IsDir,IsSymlink,SymlinkPath") {
+		t.Fatalf("missing filtered columns in meta: %s", got)
+	}
+}
+
+func TestListFilesExplicitTrueEqualsDefault(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := tool.ListFiles(context.Background(), nil, tool.ListFilesArgs{Path: dir, List: true, ShowSize: boolPtr(true)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := textOf(t, res)
+	if !strings.Contains(got, "|Name|Size|Mode|Owner|Group|ModTime|IsDir|IsSymlink|SymlinkPath|") {
+		t.Fatalf("explicit true should match default header: %s", got)
+	}
+}
+
+func TestListFilesAllColumnsHiddenKeepsName(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := tool.ListFiles(context.Background(), nil, tool.ListFilesArgs{
+		Path: dir, List: true,
+		ShowSize:        boolPtr(false),
+		ShowMode:        boolPtr(false),
+		ShowOwner:       boolPtr(false),
+		ShowGroup:       boolPtr(false),
+		ShowModTime:     boolPtr(false),
+		ShowIsDir:       boolPtr(false),
+		ShowIsSymlink:   boolPtr(false),
+		ShowSymlinkPath: boolPtr(false),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := textOf(t, res)
+	if !strings.Contains(got, "|Name|\n") {
+		t.Fatalf("expected Name-only header: %s", got)
+	}
+	if !strings.Contains(got, "columns=Name") || strings.Contains(got, "columns=Name,") {
+		t.Fatalf("expected columns=Name only: %s", got)
+	}
+	if !strings.Contains(got, "|a.txt|\n") {
+		t.Fatalf("expected Name-only row: %s", got)
+	}
+}
+
+func TestListFilesShowFlagsIgnoredInSimpleMode(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, _, err := tool.ListFiles(context.Background(), nil, tool.ListFilesArgs{Path: dir, List: false, ShowSize: boolPtr(false)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := textOf(t, res)
+	if !strings.Contains(got, "|File|\n") || !strings.Contains(got, "|a.txt|\n") {
+		t.Fatalf("simple mode table changed: %s", got)
+	}
+	if strings.Contains(got, "columns=") {
+		t.Fatalf("simple mode meta must not include columns field: %s", got)
+	}
+}

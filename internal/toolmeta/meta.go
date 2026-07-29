@@ -46,7 +46,8 @@ type ListHeader struct {
 	Returned  int
 	Total     int  // 0 means unknown
 	Truncated bool
-	Next      int // entry offset for next page; omitted when !Truncated
+	Next      int    // entry offset for next page; omitted when !Truncated
+	Columns   string // comma-separated effective columns; only set for detailed (list=true) responses
 }
 
 func (h ListHeader) String() string {
@@ -64,6 +65,10 @@ func (h ListHeader) String() string {
 	if h.Truncated && h.Next > 0 {
 		b.WriteString(" next=")
 		b.WriteString(strconv.Itoa(h.Next))
+	}
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
 	}
 	b.WriteByte(']')
 	return b.String()
