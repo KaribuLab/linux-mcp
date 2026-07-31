@@ -45,6 +45,8 @@ func NewHandler(cfg Config) (http.Handler, error) {
 	tool.AddListFilesTool(server)
 	tool.AddFindFilesTool(server)
 	tool.AddGrepTool(server)
+	tool.AddListGrepTool(server)
+	tool.AddFindGrepTool(server)
 	server.AddReceivingMiddleware(auditMiddleware(cfg.logger()))
 
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(req *http.Request) *mcp.Server {

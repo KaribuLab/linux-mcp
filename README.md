@@ -125,6 +125,8 @@ ssh -N -L 5000:127.0.0.1:5000 usuario@host-del-servicio
 | `list` | Lista directorio (meta + tabla markdown; cap 1000) | [docs/tools/list.md](docs/tools/list.md) |
 | `find` | Busca entradas por metadata en un árbol (meta + tabla markdown, columnas configurables; cap 1000/50.000 nodos) | [docs/tools/find.md](docs/tools/find.md) |
 | `grep` | Busca un patrón en un archivo o árbol, literal o RE2 (meta + filas de texto; private-key redactado, no bloqueado) | [docs/tools/grep.md](docs/tools/grep.md) |
+| `list_grep` | Lista y filtra filas (`ls \| grep`; mismo formato que `list`) | [docs/tools/list_grep.md](docs/tools/list_grep.md) |
+| `find_grep` | Find + búsqueda de contenido (`find \| xargs grep`; formato `grep`) | [docs/tools/find_grep.md](docs/tools/find_grep.md) |
 
 Índice y convención de documentación: [docs/README.md](docs/README.md).
 

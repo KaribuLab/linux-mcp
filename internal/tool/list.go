@@ -129,16 +129,28 @@ func markdownHeader(columns []string) string {
 	return b.String()
 }
 
-func ListFiles(ctx context.Context, req *mcp.CallToolRequest, args ListFilesArgs) (*mcp.CallToolResult, any, error) {
+// listTable holds a directory listing as markdown data rows (no meta line).
+// Used by list and list_grep so filtering can run on the same row strings.
+type listTable struct {
+	abs           string
+	columns       []string // detailed-mode columns; nil/empty when list=false
+	detailed      bool
+	dataRows      []string // each row includes trailing '\n'
+	totalVisible  int
+	listTruncated bool
+	next          int
+}
+
+func buildListTable(args ListFilesArgs) (*listTable, *mcp.CallToolResult, error) {
 	abs, err := policy.CheckPath(args.Path)
 	if err != nil {
 		var d *policy.Denied
 		if errors.As(err, &d) {
 			text := toolmeta.Blocked{Class: string(d.Class), Path: d.Path}.String()
-			return &mcp.CallToolResult{
+			return nil, &mcp.CallToolResult{
 				Content: []mcp.Content{&mcp.TextContent{Text: text}},
 				IsError: true,
-			}, nil, nil
+			}, nil
 		}
 		return nil, nil, err
 	}
@@ -163,18 +175,14 @@ func ListFiles(ctx context.Context, req *mcp.CallToolRequest, args ListFilesArgs
 
 	var columns []string
 	var computeOwner, computeGroup, computeSymlinkPath bool
-	var body strings.Builder
 	if args.List {
 		columns = args.visibleColumns()
 		computeOwner = args.ShowOwner == nil || *args.ShowOwner
 		computeGroup = args.ShowGroup == nil || *args.ShowGroup
 		computeSymlinkPath = args.ShowSymlinkPath == nil || *args.ShowSymlinkPath
-		body.WriteString(markdownHeader(columns))
-	} else {
-		body.WriteString("|File|\n")
-		body.WriteString("|---|\n")
 	}
 
+	dataRows := make([]string, 0, limit)
 	for i := 0; i < limit; i++ {
 		file := visible[i]
 		if args.List {
@@ -212,23 +220,59 @@ func ListFiles(ctx context.Context, req *mcp.CallToolRequest, args ListFilesArgs
 					return nil, nil, fmt.Errorf("failed to read symlink in file %s: %w", file.Name(), err)
 				}
 			}
-			body.WriteString(fi.detailedRow(columns))
+			dataRows = append(dataRows, fi.detailedRow(columns))
 		} else {
-			body.WriteString(fileInfo{Name: file.Name()}.simpleRow())
+			dataRows = append(dataRows, fileInfo{Name: file.Name()}.simpleRow())
 		}
 	}
 
-	header := toolmeta.ListHeader{
-		Path:      abs,
-		Returned:  limit,
-		Total:     total,
-		Truncated: truncated,
+	tbl := &listTable{
+		abs:           abs,
+		columns:       columns,
+		detailed:      args.List,
+		dataRows:      dataRows,
+		totalVisible:  total,
+		listTruncated: truncated,
 	}
 	if truncated {
-		header.Next = limit
+		tbl.next = limit
 	}
-	if args.List {
-		header.Columns = strings.Join(columns, ",")
+	return tbl, nil, nil
+}
+
+func (t *listTable) writeHeader(body *strings.Builder) {
+	if t.detailed {
+		body.WriteString(markdownHeader(t.columns))
+		return
+	}
+	body.WriteString("|File|\n")
+	body.WriteString("|---|\n")
+}
+
+func ListFiles(ctx context.Context, req *mcp.CallToolRequest, args ListFilesArgs) (*mcp.CallToolResult, any, error) {
+	tbl, blocked, err := buildListTable(args)
+	if err != nil {
+		return nil, nil, err
+	}
+	if blocked != nil {
+		return blocked, nil, nil
+	}
+
+	var body strings.Builder
+	tbl.writeHeader(&body)
+	for _, row := range tbl.dataRows {
+		body.WriteString(row)
+	}
+
+	header := toolmeta.ListHeader{
+		Path:      tbl.abs,
+		Returned:  len(tbl.dataRows),
+		Total:     tbl.totalVisible,
+		Truncated: tbl.listTruncated,
+		Next:      tbl.next,
+	}
+	if tbl.detailed {
+		header.Columns = strings.Join(tbl.columns, ",")
 	}
 	text := toolmeta.Render(header, &body)
 	return &mcp.CallToolResult{

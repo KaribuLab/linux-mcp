@@ -129,6 +129,71 @@ func (h GrepHeader) String() string {
 	return b.String()
 }
 
+// ListGrepHeader is the success metadata line for list_grep (list|grep).
+type ListGrepHeader struct {
+	Path      string
+	Returned  int
+	Total     int // rows that matched the pattern (within the listed window)
+	Truncated bool
+	Next      int    // entry offset hint when listing base was truncated
+	Columns   string // comma-separated columns when list=true
+}
+
+func (h ListGrepHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[list_grep path=")
+	b.WriteString(h.Path)
+	b.WriteString(" entries=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	if h.Total > 0 {
+		b.WriteByte('/')
+		b.WriteString(strconv.Itoa(h.Total))
+	}
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	if h.Truncated && h.Next > 0 {
+		b.WriteString(" next=")
+		b.WriteString(strconv.Itoa(h.Next))
+	}
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// FindGrepHeader is the success metadata line for find_grep (find|xargs grep).
+type FindGrepHeader struct {
+	Path         string
+	Returned     int
+	Total        int
+	Truncated    bool
+	FilesScanned int
+	Redacted     int
+	Visited      int
+}
+
+func (h FindGrepHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[find_grep path=")
+	b.WriteString(h.Path)
+	b.WriteString(" matches=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	b.WriteString(" filesScanned=")
+	b.WriteString(strconv.Itoa(h.FilesScanned))
+	b.WriteString(" redacted=")
+	b.WriteString(strconv.Itoa(h.Redacted))
+	b.WriteString(" visited=")
+	b.WriteString(strconv.Itoa(h.Visited))
+	b.WriteByte(']')
+	return b.String()
+}
+
 // Render concatenates header and optional body with a single allocation path.
 func Render(h fmt.Stringer, body *strings.Builder) string {
 	var out strings.Builder
