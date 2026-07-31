@@ -234,6 +234,33 @@ func TestListGrepAndFindGrepToolsAreRegistered(t *testing.T) {
 	}
 }
 
+func TestPsAndSsToolsAreRegistered(t *testing.T) {
+	deployment := start(t)
+	issued := deployment.requestToken(t, "5m")
+	session := deployment.connect(t, issued.Token)
+
+	resp, err := session.ListTools(context.Background(), &mcp.ListToolsParams{})
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+
+	byName := make(map[string]*mcp.Tool, len(resp.Tools))
+	for _, tl := range resp.Tools {
+		byName[tl.Name] = tl
+	}
+
+	for _, name := range []string{"ps", "ps_grep", "ss", "ss_grep"} {
+		tl, ok := byName[name]
+		if !ok {
+			t.Fatalf("%s tool not registered", name)
+		}
+		tag := "[" + name
+		if !strings.Contains(tl.Description, tag) {
+			t.Errorf("%s description missing response contract %s: %s", name, tag, tl.Description)
+		}
+	}
+}
+
 func TestConnectionWithoutTokenIsRefused(t *testing.T) {
 	deployment := start(t)
 

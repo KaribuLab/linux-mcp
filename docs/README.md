@@ -20,7 +20,11 @@ cmd/linux-mcp/main.go
        │              ├─ tool.AddFindFilesTool
        │              ├─ tool.AddGrepTool
        │              ├─ tool.AddListGrepTool
-       │              └─ tool.AddFindGrepTool
+       │              ├─ tool.AddFindGrepTool
+       │              ├─ tool.AddPsTool
+       │              ├─ tool.AddPsGrepTool
+       │              ├─ tool.AddSsTool
+       │              └─ tool.AddSsGrepTool
        └─ auth                                # pide el token por el socket
 ```
 
@@ -41,6 +45,10 @@ cmd/linux-mcp/main.go
 | [`grep`](tools/grep.md) | Buscar un patrón en un archivo o árbol (meta + filas de texto) | `internal/tool/grep.go` |
 | [`list_grep`](tools/list_grep.md) | Listar y filtrar filas (`ls \| grep`; meta + markdown) | `internal/tool/list_grep.go` |
 | [`find_grep`](tools/find_grep.md) | Find + contenido (`find \| xargs grep`; meta + filas) | `internal/tool/find_grep.go` |
+| [`ps`](tools/ps.md) | Listar procesos vía `/proc` (meta + markdown, `show*`) | `internal/tool/ps.go` |
+| [`ps_grep`](tools/ps_grep.md) | Procesos filtrados (`ps \| grep`; meta + markdown) | `internal/tool/ps_grep.go` |
+| [`ss`](tools/ss.md) | Listar sockets vía netlink (meta + markdown, `show*`) | `internal/tool/ss.go` |
+| [`ss_grep`](tools/ss_grep.md) | Sockets filtrados (meta + markdown) | `internal/tool/ss_grep.go` |
 
 ## Agentes
 
@@ -62,3 +70,5 @@ Cómo configurar cada cliente MCP contra el servidor, con túnel SSH y token bea
 ## Convención
 
 Toda tool MCP y todo comando de CLI, nuevo o modificado, **debe** tener documentación actualizada en `docs/tools/<nombre>.md` o `docs/commands/<nombre>.md` y aparecer en la tabla correspondiente. OpenSpec refuerza esta regla en `openspec/config.yaml`.
+
+Cada `docs/tools/<nombre>.md` **debe** incluir la sección `## Prompt de ejemplo (agente)` con al menos un prompt en español neutro que un humano pueda pegar a un agente para ejercitar esa tool vía linux-mcp (forma sugerida: `Usa el tool linux-mcp \`<nombre>\` para …`).

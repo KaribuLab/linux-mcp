@@ -27,6 +27,9 @@ context: |
   - Commits: Conventional Commits con prefijos feat/fix/chore/refactor; mensaje en español neutro
   - Tools nuevas: implementación + registro en NewHandler + doc en docs/tools/ + fila en docs/README.md
   - No inventar tools sin documentar; la doc es parte del Definition of Done
+  - Cada docs/tools/<nombre>.md DEBE incluir sección "## Prompt de ejemplo (agente)"
+    con al menos un prompt en español neutro que un humano pueda pegar a un agente para
+    ejercitar esa tool vía linux-mcp (forma sugerida: "Usa el tool linux-mcp `<nombre>` para …").
 
 # Reglas por artefacto.
 rules:
@@ -38,10 +41,13 @@ rules:
     - Detallar firma de tools (nombre MCP, args JSON, forma de respuesta)
     - Explicar registro en NewHandler y transporte (Streamable HTTP / CORS si aplica)
     - Referenciar docs/tools/ como fuente de verdad de comportamiento público
+    - 'Fijar el contrato de la sección estándar "Prompt de ejemplo (agente)" en cada docs/tools/<nombre>.md del change'
   specs:
     - Requisitos de tools deben ser verificables contra docs/tools/ y el código en internal/tool
+    - 'Si el change añade o modifica docs de una tool, el spec DEBE exigir la sección "Prompt de ejemplo (agente)" con al menos un prompt usable'
   tasks:
     - Toda task que añada o modifique una tool MCP debe incluir subtarea explícita de documentarla en docs/tools/<nombre>.md y actualizar docs/README.md
+    - 'Toda task de documentación de tool debe incluir subtarea de sección "## Prompt de ejemplo (agente)" con prompt(s) en español neutro (ej. "Usa el tool linux-mcp `ps` para …")'
     - Toda task que añada o modifique un comando de CLI debe incluir subtarea explícita de documentarlo en docs/commands/<nombre>.md (flags, defaults, salida y códigos de error) y actualizar docs/README.md
     - No marcar complete una tool ni un comando sin documentación alineada al comportamiento real del código
     - Preferir chunks de trabajo acotados (ideal ≤ 2 horas)

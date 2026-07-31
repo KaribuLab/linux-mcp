@@ -3,8 +3,6 @@ package tool
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/KaribuLab/linux-mcp/internal/policy"
@@ -54,38 +52,10 @@ func patternLooksLikeGlob(pattern string) bool {
 	return strings.ContainsAny(pattern, "*?[")
 }
 
-// listRowName returns the first markdown cell (Name/File) from a data row.
-func listRowName(row string) string {
-	line := strings.TrimRight(row, "\n")
-	parts := strings.Split(line, "|")
-	if len(parts) < 2 {
-		return ""
-	}
-	return parts[1]
-}
-
-func matchListGrepRow(row, pattern string, extended, ignoreCase bool, re *regexp.Regexp) (bool, error) {
-	if !extended && patternLooksLikeGlob(pattern) {
-		name := listRowName(row)
-		pat := pattern
-		candidate := name
-		if ignoreCase {
-			pat = strings.ToLower(pat)
-			candidate = strings.ToLower(candidate)
-		}
-		return filepath.Match(pat, candidate)
-	}
-	return re.MatchString(strings.TrimRight(row, "\n")), nil
-}
-
 func ListGrep(ctx context.Context, req *mcp.CallToolRequest, args ListGrepArgs) (*mcp.CallToolResult, any, error) {
-	var re *regexp.Regexp
-	if args.Extended || !patternLooksLikeGlob(args.Pattern) {
-		var err error
-		re, err = compileGrepPattern(args.Pattern, args.Extended, args.IgnoreCase)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid pattern: %w", err)
-		}
+	re, err := compileRowFilter(args.Pattern, args.Extended, args.IgnoreCase)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid pattern: %w", err)
 	}
 
 	tbl, blocked, err := buildListTable(args.listArgs())
@@ -98,7 +68,7 @@ func ListGrep(ctx context.Context, req *mcp.CallToolRequest, args ListGrepArgs) 
 
 	matched := make([]string, 0, len(tbl.dataRows))
 	for _, row := range tbl.dataRows {
-		ok, matchErr := matchListGrepRow(row, args.Pattern, args.Extended, args.IgnoreCase, re)
+		ok, matchErr := matchTableRow(row, args.Pattern, args.Extended, args.IgnoreCase, re, 1)
 		if matchErr != nil {
 			return nil, nil, fmt.Errorf("invalid glob pattern: %w", matchErr)
 		}

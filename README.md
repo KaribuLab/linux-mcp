@@ -127,6 +127,10 @@ ssh -N -L 5000:127.0.0.1:5000 usuario@host-del-servicio
 | `grep` | Busca un patrón en un archivo o árbol, literal o RE2 (meta + filas de texto; private-key redactado, no bloqueado) | [docs/tools/grep.md](docs/tools/grep.md) |
 | `list_grep` | Lista y filtra filas (`ls \| grep`; mismo formato que `list`) | [docs/tools/list_grep.md](docs/tools/list_grep.md) |
 | `find_grep` | Find + búsqueda de contenido (`find \| xargs grep`; formato `grep`) | [docs/tools/find_grep.md](docs/tools/find_grep.md) |
+| `ps` | Lista procesos vía `/proc` (tabla markdown, columnas `show*`) | [docs/tools/ps.md](docs/tools/ps.md) |
+| `ps_grep` | Filtra filas de `ps` server-side | [docs/tools/ps_grep.md](docs/tools/ps_grep.md) |
+| `ss` | Lista sockets vía netlink (defaults LISTEN/inet; columnas `show*`) | [docs/tools/ss.md](docs/tools/ss.md) |
+| `ss_grep` | Filtra filas de `ss` server-side | [docs/tools/ss_grep.md](docs/tools/ss_grep.md) |
 
 Índice y convención de documentación: [docs/README.md](docs/README.md).
 
@@ -142,7 +146,7 @@ internal/command/     # CLI cobra (serve, auth)
 internal/handler/     # servidor MCP + Host/CORS + bearer
 internal/token/       # emisión y verificación de JWT
 internal/issuer/      # socket unix de emisión (SO_PEERCRED)
-internal/tool/        # tools (cat, list, find, grep)
+internal/tool/        # tools (cat, list, find, grep, ps, ss, …)
 internal/policy/      # denylist, sniff, lectura acotada, recorrido de árbol acotado (walk)
 internal/toolmeta/    # headers de respuesta
 docs/commands/        # documentación por comando

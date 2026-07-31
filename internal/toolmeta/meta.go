@@ -194,6 +194,102 @@ func (h FindGrepHeader) String() string {
 	return b.String()
 }
 
+// PsHeader is the success metadata line for ps.
+type PsHeader struct {
+	Returned  int
+	Total     int
+	Truncated bool
+	Columns   string
+}
+
+func (h PsHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[ps entries=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// PsGrepHeader is the success metadata line for ps_grep.
+type PsGrepHeader struct {
+	Returned  int
+	Total     int
+	Truncated bool
+	Columns   string
+}
+
+func (h PsGrepHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[ps_grep entries=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// SsHeader is the success metadata line for ss.
+type SsHeader struct {
+	Returned  int
+	Total     int
+	Truncated bool
+	Columns   string
+}
+
+func (h SsHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[ss entries=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+// SsGrepHeader is the success metadata line for ss_grep.
+type SsGrepHeader struct {
+	Returned  int
+	Total     int
+	Truncated bool
+	Columns   string
+}
+
+func (h SsGrepHeader) String() string {
+	var b strings.Builder
+	b.WriteString("[ss_grep entries=")
+	b.WriteString(strconv.Itoa(h.Returned))
+	b.WriteByte('/')
+	b.WriteString(strconv.Itoa(h.Total))
+	b.WriteString(" truncated=")
+	b.WriteString(strconv.FormatBool(h.Truncated))
+	if h.Columns != "" {
+		b.WriteString(" columns=")
+		b.WriteString(h.Columns)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
 // Render concatenates header and optional body with a single allocation path.
 func Render(h fmt.Stringer, body *strings.Builder) string {
 	var out strings.Builder
