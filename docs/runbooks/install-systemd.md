@@ -64,8 +64,23 @@ sudo install -m 0755 /tmp/linux-mcp /usr/local/bin/linux-mcp
 
 ## 3. Instalar y habilitar la unit
 
+Si tenés el repo clonado:
+
 ```bash
 sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-mcp.service
+```
+
+Sin clonar (`-f` falla ante 404). La unit siempre sale de `main` (no del tag del binario): es config de deploy, no un asset versionado del Release.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KaribuLab/linux-mcp/main/deploy/systemd/linux-mcp.service \
+  -o /tmp/linux-mcp.service
+sudo install -m 0644 /tmp/linux-mcp.service /etc/systemd/system/linux-mcp.service
+```
+
+Luego:
+
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now linux-mcp.service
 ```
@@ -150,10 +165,19 @@ La clave que firma los tokens se genera en memoria al arrancar y nunca toca disc
 
 ## 7. Actualizar
 
-Si cambió la unit, instálala **antes** de reiniciar; de lo contrario el servicio se reinicia con la definición vieja:
+Si cambió la unit, instálala **antes** de reiniciar; de lo contrario el servicio se reinicia con la definición vieja. Desde el repo:
 
 ```bash
 sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-mcp.service
+sudo systemctl daemon-reload
+```
+
+Sin clonar (siempre `main`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KaribuLab/linux-mcp/main/deploy/systemd/linux-mcp.service \
+  -o /tmp/linux-mcp.service
+sudo install -m 0644 /tmp/linux-mcp.service /etc/systemd/system/linux-mcp.service
 sudo systemctl daemon-reload
 ```
 
@@ -205,6 +229,7 @@ sudo rm -f /usr/local/bin/linux-mcp
 | `cat`/`list` bloquean paths | Esperado: denylist en app (`/etc/shadow`, keys, etc.) | Systemd `InaccessiblePaths` es complemento, no sustituto |
 | `sha256sum: SHA256SUMS: no properly formatted...` | `SHA256SUMS` no es el archivo del release (suele ser HTML 404) | Confirmá que el tag existe en Releases; usá `curl -fsSL` y revisá `head SHA256SUMS` |
 | `curl: (22) The requested URL returned error: 404` | El tag o el asset no existen | Listá tags reales en Releases o compilá con [§2.2](#22-compilar-desde-el-repo) |
+| `status=11/SEGV` / `Result: core-dump` al arrancar | Unit vieja con `SystemCallFilter=@system-service` (seccomp + Go) | Reinstalá la unit del repo ([§3](#3-instalar-y-habilitar-la-unit) / [§7](#7-actualizar)); borrá drop-ins de debug en `/etc/systemd/system/linux-mcp.service.d/` si quedaron |
 
 ## Referencias
 

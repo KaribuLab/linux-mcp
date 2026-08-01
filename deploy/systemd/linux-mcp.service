@@ -36,16 +36,16 @@ LockPersonality=true
 MemoryDenyWriteExecute=true
 RestrictRealtime=true
 SystemCallArchitectures=native
-SystemCallFilter=@system-service
-SystemCallErrorNumber=EPERM
+# No SystemCallFilter=@system-service: on several LTS hosts that whitelist
+# returns EPERM for a syscall Go 1.26 needs at startup and the process SEGV.
 
 # The token signing key lives only in memory: no core dump may leak it, and
 # other users must not be able to inspect this process.
 LimitCORE=0
 ProtectProc=invisible
 
-# Only the unix socket for issuance and the loopback HTTP endpoint.
-RestrictAddressFamilies=AF_UNIX AF_INET
+# Unix issuance socket, loopback HTTP, and netlink for ss/ss_grep (sock_diag).
+RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK
 
 # Complement (not substitute) for in-process path policy.
 InaccessiblePaths=/etc/shadow /etc/gshadow /root
