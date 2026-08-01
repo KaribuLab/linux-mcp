@@ -13,8 +13,8 @@ Dos identidades participan:
 
 ## Requisitos
 
-- Linux con systemd
-- Go 1.26+ (para build) o un binario ya compilado
+- Linux con systemd (`amd64` o `arm64`)
+- Go 1.26+ solo si vas a compilar; para instalar desde Releases no hace falta
 - Privilegios root para crear usuario y grupo, instalar unit y capability ambient
 
 ## 1. Crear usuario y grupo
@@ -26,7 +26,27 @@ sudo groupadd --system mcp-admin
 
 El grupo `mcp-admin` debe existir **antes** de arrancar el servicio: la unit lo declara en `SupplementaryGroups` y `serve` falla al arrancar si no puede resolverlo.
 
-## 2. Build e instalar el binario
+## 2. Obtener e instalar el binario
+
+### 2.1 Descargar un binario publicado (recomendado)
+
+Los Releases los genera el CI al mergear a `main`: [kli](https://github.com/KaribuLab/kli) calcula el semver desde Conventional Commits y publica binarios `linux/amd64` y `linux/arm64` con `SHA256SUMS` en [Releases](https://github.com/KaribuLab/linux-mcp/releases). Solo Linux. Si aún no hay release, usá [§2.2](#22-compilar-desde-el-repo).
+
+Elegí un tag que exista en Releases (no inventes el número) y el asset según tu arquitectura (`uname -m`: `x86_64` → `amd64`, `aarch64` → `arm64`). `-f` hace que `curl` falle si el asset no existe (sin `-f`, un 404 deja HTML en el archivo y `sha256sum` se queja del formato):
+
+```bash
+VERSION=v1.0.0   # tag real de https://github.com/KaribuLab/linux-mcp/releases
+ARCH=amd64       # o arm64
+BASE=https://github.com/KaribuLab/linux-mcp/releases/download/$VERSION
+curl -fsSLO $BASE/linux-mcp-linux-$ARCH
+curl -fsSLO $BASE/SHA256SUMS
+
+sha256sum --ignore-missing -c SHA256SUMS
+sudo install -m 0755 linux-mcp-linux-$ARCH /usr/local/bin/linux-mcp
+linux-mcp --version
+```
+
+### 2.2 Compilar desde el repo
 
 Desde el repo:
 
@@ -41,8 +61,6 @@ Sin Task:
 go build -o /tmp/linux-mcp ./cmd/linux-mcp
 sudo install -m 0755 /tmp/linux-mcp /usr/local/bin/linux-mcp
 ```
-
-También puedes descargar un binario publicado desde [Releases](https://github.com/KaribuLab/linux-mcp/releases) y verificar su checksum contra `SHA256SUMS`.
 
 ## 3. Instalar y habilitar la unit
 
@@ -139,7 +157,20 @@ sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-
 sudo systemctl daemon-reload
 ```
 
-Luego el binario:
+Luego el binario. Desde Releases (mismo patrón que en [§2.1](#21-descargar-un-binario-publicado-recomendado)):
+
+```bash
+VERSION=v1.0.0   # tag real de Releases
+ARCH=amd64       # o arm64
+BASE=https://github.com/KaribuLab/linux-mcp/releases/download/$VERSION
+curl -fsSLO $BASE/linux-mcp-linux-$ARCH
+curl -fsSLO $BASE/SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
+sudo install -m 0755 linux-mcp-linux-$ARCH /usr/local/bin/linux-mcp
+sudo systemctl restart linux-mcp.service
+```
+
+O recompilando:
 
 ```bash
 go tool task build
@@ -172,6 +203,8 @@ sudo rm -f /usr/local/bin/linux-mcp
 | `403 host not allowed` | El header `Host` no coincide con el `--addr` del servicio | Usar `localhost:5000` o `127.0.0.1:5000` a través del túnel, sin proxies que reescriban `Host` |
 | `permission denied` al leer configs de sistema | Falta `CAP_DAC_READ_SEARCH` | `systemctl show linux-mcp`; revisar la unit |
 | `cat`/`list` bloquean paths | Esperado: denylist en app (`/etc/shadow`, keys, etc.) | Systemd `InaccessiblePaths` es complemento, no sustituto |
+| `sha256sum: SHA256SUMS: no properly formatted...` | `SHA256SUMS` no es el archivo del release (suele ser HTML 404) | Confirmá que el tag existe en Releases; usá `curl -fsSL` y revisá `head SHA256SUMS` |
+| `curl: (22) The requested URL returned error: 404` | El tag o el asset no existen | Listá tags reales en Releases o compilá con [§2.2](#22-compilar-desde-el-repo) |
 
 ## Referencias
 

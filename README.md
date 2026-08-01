@@ -15,13 +15,13 @@ Usa transporte **Streamable HTTP** en `http://localhost:5000` y exige un token b
 
 ### Descargar un binario publicado
 
-Cada tag `v*` publica binarios para `linux/amd64` y `linux/arm64` junto con un archivo `SHA256SUMS` en [Releases](https://github.com/KaribuLab/linux-mcp/releases).
+Cada merge a `main` con Conventional Commits (`feat:` / `fix:` / breaking) calcula la versión con [kli](https://github.com/KaribuLab/kli) y, si hay bump, publica un GitHub Release con binarios `linux/amd64` y `linux/arm64` más `SHA256SUMS` en [Releases](https://github.com/KaribuLab/linux-mcp/releases). Usá un tag que exista ahí; `-f` hace que `curl` falle ante 404 (sin eso, un HTML de error termina en `SHA256SUMS` y `sha256sum` se queja del formato).
 
 ```bash
-VERSION=v1.0.0
+VERSION=v1.0.0   # tag real de Releases
 BASE=https://github.com/KaribuLab/linux-mcp/releases/download/$VERSION
-curl -sSLO $BASE/linux-mcp-linux-amd64
-curl -sSLO $BASE/SHA256SUMS
+curl -fsSLO $BASE/linux-mcp-linux-amd64
+curl -fsSLO $BASE/SHA256SUMS
 
 sha256sum --ignore-missing -c SHA256SUMS
 sudo install -m 0755 linux-mcp-linux-amd64 /usr/local/bin/linux-mcp
