@@ -35,8 +35,8 @@ Los Releases los genera el CI al mergear a `main`: [kli](https://github.com/Kari
 Elegí un tag que exista en Releases (no inventes el número) y el asset según tu arquitectura (`uname -m`: `x86_64` → `amd64`, `aarch64` → `arm64`). `-f` hace que `curl` falle si el asset no existe (sin `-f`, un 404 deja HTML en el archivo y `sha256sum` se queja del formato):
 
 ```bash
-VERSION=v1.0.0   # tag real de https://github.com/KaribuLab/linux-mcp/releases
-ARCH=amd64       # o arm64
+VERSION=v0.10.0   # última en https://github.com/KaribuLab/linux-mcp/releases
+ARCH=amd64        # o arm64
 BASE=https://github.com/KaribuLab/linux-mcp/releases/download/$VERSION
 curl -fsSLO $BASE/linux-mcp-linux-$ARCH
 curl -fsSLO $BASE/SHA256SUMS
@@ -160,8 +160,8 @@ sudo systemctl daemon-reload
 Luego el binario. Desde Releases (mismo patrón que en [§2.1](#21-descargar-un-binario-publicado-recomendado)):
 
 ```bash
-VERSION=v1.0.0   # tag real de Releases
-ARCH=amd64       # o arm64
+VERSION=v0.10.0   # última en Releases
+ARCH=amd64        # o arm64
 BASE=https://github.com/KaribuLab/linux-mcp/releases/download/$VERSION
 curl -fsSLO $BASE/linux-mcp-linux-$ARCH
 curl -fsSLO $BASE/SHA256SUMS

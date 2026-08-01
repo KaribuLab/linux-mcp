@@ -9,6 +9,7 @@ Hoy el pipeline solo publica un GitHub Release cuando alguien pushea a mano un t
 - En el mismo flujo (sin depender de un segundo workflow disparado por el tag, para evitar el anti-loop de `GITHUB_TOKEN`), compilar `linux/amd64` y `linux/arm64`, generar `SHA256SUMS` y publicar un GitHub Release con esos artefactos.
 - Adaptar o fusionar el workflow `release.yml` actual para que no choque con este flujo.
 - Documentar en README/runbook que los releases salen de commits en `main` vía kli (y que el tag de ejemplo debe existir en Releases).
+- Tras el primer Release publicado por el pipeline, actualizar los ejemplos de descarga en `README.md` y el runbook para que `VERSION` apunte a la **última versión** real (no un placeholder).
 
 ## Non-goals
 
