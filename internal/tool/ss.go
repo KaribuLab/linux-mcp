@@ -17,7 +17,7 @@ import (
 )
 
 // SsToolDescription is the MCP tool description (agent-facing response contract).
-const SsToolDescription = `List sockets via in-process netlink sock_diag (never runs the ss binary or any host shell). Wide model: default state=LISTEN and family=inet (IPv4+IPv6) for a cheap attack-surface view; widen with state=ESTAB|all and family=inet4|inet6|unix|all. On success: [ss entries=returned/total truncated=bool columns=...] + markdown table. Identity columns Proto and Local are always present. Optional show* flags (default true): showState, showPeer, showPid, showProcess, showUser, showFamily. Cap 1000 rows. Pid/Process are resolved from socket inode via /proc when visible.`
+const SsToolDescription = `List sockets via in-process netlink sock_diag (never runs the ss binary or any host shell). Wide model: default state=LISTEN and family=inet (IPv4+IPv6) for a cheap attack-surface view; widen with state=ESTAB|all and family=inet4|inet6|unix|all. On success: [ss entries=returned/total truncated=bool columns=...] + markdown table. Identity columns Proto and Local are always present. Optional show* flags (default true): showState, showPeer, showPid, showProcess, showUser, showFamily. Cap 1000 rows. Pid/Process are resolved from socket inode via /proc/*/fd; under the reference systemd unit (CAP_SYS_PTRACE, no ProtectProc=invisible) this includes processes of other users. Empty Pid/Process when the kernel denies the walk — never fabricated.`
 
 // Linux TCP states (include/net/tcp_states.h) — not exported by x/sys/unix.
 const (

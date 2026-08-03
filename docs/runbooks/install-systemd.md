@@ -1,8 +1,18 @@
 # Instalar linux-mcp con systemd
 
-Runbook para desplegar el servidor MCP como servicio systemd con usuario `mcp-agent`, `CAP_DAC_READ_SEARCH` y emisión de tokens restringida al grupo `mcp-admin`.
+Runbook para desplegar el servidor MCP como servicio systemd con usuario `mcp-agent`, capacidades `CAP_DAC_READ_SEARCH` + `CAP_SYS_PTRACE`, y emisión de tokens restringida al grupo `mcp-admin`.
 
 La **policy de lectura en el proceso Go es obligatoria** aunque no uses systemd: la unit solo añade defensa en profundidad (`InaccessiblePaths`, hardening de escritura). El binario puede correr a mano sin esta unit.
+
+### Capacidades de la unit y riesgo Bearer
+
+| Cap / directiva | Para qué |
+|-----------------|----------|
+| `CAP_DAC_READ_SEARCH` | Lectura ops de archivos más allá del DAC del uid `mcp-agent` |
+| `CAP_SYS_PTRACE` | Resolver inode de socket → Pid/Process vía `/proc/*/fd` de procesos de otros usuarios (como `ss -p`) |
+| Sin `ProtectProc=invisible` | El servicio debe ver entradas `/proc` de otros uids para `ss`/`ps` |
+
+Un Bearer válido puede obtener ese inventario de dueños de sockets a través de las tools MCP (solo lectura; no hay tool de volcado de memoria). Asumí ese riesgo si instalás la unit de referencia: acotá `mcp-admin`, TTL cortos y bind en loopback.
 
 Dos identidades participan:
 
@@ -108,6 +118,23 @@ sudo ls -l /run/linux-mcp/issue.sock
 
 Si el modo no es `0660` o el grupo no es `mcp-admin`, ningún operador podrá pedir tokens (o los podrá pedir de más).
 
+Comprobá que la unit cargó las caps y no oculta `/proc` ajeno:
+
+```bash
+systemctl show linux-mcp.service -p AmbientCapabilities -p CapabilityBoundingSet -p ProtectProc
+# AmbientCapabilities=cap_dac_read_search cap_sys_ptrace  (orden/nombre pueden variar)
+# ProtectProc=default   # o vacío / no "invisible"
+```
+
+Con un token y cliente MCP (o Inspector), listá listeners y confirmá Pid de un proceso que **no** sea `mcp-agent` (p. ej. `sshd`, MTA, web):
+
+```text
+Usa el tool linux-mcp `ss` con state=LISTEN y showPid/showProcess en true.
+Para un puerto conocido de otro servicio, el Pid no debe quedar vacío.
+```
+
+Si Pid sigue vacío en listeners ajenos: unit vieja en `/etc` (falta [§7](#7-actualizar)), falta `CAP_SYS_PTRACE`, o `ProtectProc=invisible` en un drop-in.
+
 ## 5. Autorizar operadores
 
 ```bash
@@ -165,7 +192,7 @@ La clave que firma los tokens se genera en memoria al arrancar y nunca toca disc
 
 ## 7. Actualizar
 
-Si cambió la unit, instálala **antes** de reiniciar; de lo contrario el servicio se reinicia con la definición vieja. Desde el repo:
+Si cambió la unit, instálala **antes** de reiniciar; de lo contrario el servicio se reinicia con la definición vieja. En particular, una unit antigua con solo `CAP_DAC_READ_SEARCH` y `ProtectProc=invisible` deja `ss` sin Pid/Process en procesos ajenos aunque el binario sea nuevo. Desde el repo:
 
 ```bash
 sudo install -m 0644 deploy/systemd/linux-mcp.service /etc/systemd/system/linux-mcp.service
@@ -226,6 +253,7 @@ sudo rm -f /usr/local/bin/linux-mcp
 | `403 origin not allowed` | Un cliente de browser manda un `Origin` fuera del allowlist | El log del servicio trae el origen exacto; añadirlo con `--cors` |
 | `403 host not allowed` | El header `Host` no coincide con el `--addr` del servicio | Usar `localhost:5000` o `127.0.0.1:5000` a través del túnel, sin proxies que reescriban `Host` |
 | `permission denied` al leer configs de sistema | Falta `CAP_DAC_READ_SEARCH` | `systemctl show linux-mcp`; revisar la unit |
+| `ss`/`ss_grep`: Pid/Process vacíos en listeners de otros uids | Unit vieja, sin `CAP_SYS_PTRACE`, o `ProtectProc=invisible` | Reinstalá unit del repo ([§3](#3-instalar-y-habilitar-la-unit) / [§7](#7-actualizar)); `systemctl show` caps y ProtectProc; re-verificá [§4](#4-verificar) |
 | `cat`/`list` bloquean paths | Esperado: denylist en app (`/etc/shadow`, keys, etc.) | Systemd `InaccessiblePaths` es complemento, no sustituto |
 | `sha256sum: SHA256SUMS: no properly formatted...` | `SHA256SUMS` no es el archivo del release (suele ser HTML 404) | Confirmá que el tag existe en Releases; usá `curl -fsSL` y revisá `head SHA256SUMS` |
 | `curl: (22) The requested URL returned error: 404` | El tag o el asset no existen | Listá tags reales en Releases o compilá con [§2.2](#22-compilar-desde-el-repo) |

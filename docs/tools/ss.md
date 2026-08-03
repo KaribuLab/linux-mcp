@@ -19,12 +19,12 @@ Lista sockets vía **netlink sock_diag** in-process (`github.com/florianl/go-dia
 
 Identidad siempre: `Proto`, `Local`. Orden fijo. Meta `columns=`.
 
-`Pid`/`Process` se resuelven por inode vía `/proc/*/fd` cuando el proceso es visible.
+`Pid`/`Process` se resuelven por inode vía `/proc/*/fd` (`socket:[inode]`). Con la [unit systemd de referencia](../runbooks/install-systemd.md) (`CAP_SYS_PTRACE`, sin `ProtectProc=invisible`) esa resolución alcanza procesos de otros uids. Sin esas privilegios las columnas pueden quedar vacías; no se inventan Pids.
 
 ## Prompt de ejemplo (agente)
 
 ```text
-Usa el tool linux-mcp `ss` con state=LISTEN y family=inet (defaults) ocultando Peer, y resume qué servicios escuchan en 0.0.0.0 o ::.
+Usa el tool linux-mcp `ss` con state=LISTEN y showPid/showProcess en true. Para el puerto que te indique (o un LISTEN sospechoso), reportá Proto, Local, Pid, Process y User; si hace falta cruzá el Pid con ps o ps_grep.
 ```
 
 ## Notas

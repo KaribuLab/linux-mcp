@@ -1,8 +1,4 @@
-## Purpose
-
-Reference systemd unit and install runbook so operators can deploy linux-mcp as a hardened read-oriented service without inventing the unit from scratch.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Systemd unit file shipped in repository
 The repository MUST include a reference systemd unit at `deploy/systemd/linux-mcp.service` that runs the service as user `mcp-agent`, sets `ExecStart` to the documented binary path **invoking the `serve` subcommand**, grants `CAP_DAC_READ_SEARCH` and `CAP_SYS_PTRACE` via ambient and bounding capabilities (and MUST NOT grant unrelated capabilities), and applies write-hardening directives suitable for a read-oriented ops agent.
@@ -31,6 +27,8 @@ The unit MUST additionally provide a runtime directory for the issuance socket, 
 - **WHEN** an operator inspects the unit
 - **THEN** it MUST disable core dumps so the in-memory signing key cannot be written to disk by a crash
 
+## ADDED Requirements
+
 ### Requirement: Runbook documents socket Pid resolution privileges and risk
 The install runbook (`docs/runbooks/install-systemd.md`) MUST document that the reference unit grants `CAP_SYS_PTRACE` and does not use `ProtectProc=invisible` so `ss`/`ss_grep` can resolve socket inodes to Pid/Process for processes of other users via `/proc/*/fd`. It MUST state the accepted risk: a valid Bearer token can obtain that process-owner inventory through the MCP API (read-only tools; no memory-dump tool). It MUST include a verification step (or equivalent troubleshooting) that after installing the unit, `ss` with Pid visible shows a non-empty Pid for at least one listening socket owned by a non-`mcp-agent` process when such a socket exists on the host.
 
@@ -41,38 +39,3 @@ The install runbook (`docs/runbooks/install-systemd.md`) MUST document that the 
 #### Scenario: Runbook verification covers foreign Pid
 - **WHEN** an operator follows the post-install or update verification guidance
 - **THEN** the runbook MUST instruct checking that Pid/Process on `ss` (or `ss_grep`) is populated for a foreign listening socket when one exists
-
-### Requirement: Install runbook documents OS setup
-The repository MUST include `docs/runbooks/install-systemd.md` that documents creating the OS user/group, installing the binary, installing and enabling the unit, verifying the service, updating, and uninstalling. The runbook MUST state that in-process read policy remains required even when systemd is not used.
-
-The runbook MUST additionally document creating the `mcp-admin` group, adding operators to it, and the fact that group membership only takes effect after the user opens a new session. The update procedure MUST warn that the new unit has to be installed before restarting, because the previous `ExecStart` without a subcommand no longer starts the service.
-
-#### Scenario: Runbook covers user and enable steps
-- **WHEN** an operator follows `docs/runbooks/install-systemd.md`
-- **THEN** the document MUST include commands to create `mcp-agent`, install the unit under `/etc/systemd/system/`, and `enable --now` the service
-
-#### Scenario: Runbook covers the administrative group
-- **WHEN** an operator follows the runbook
-- **THEN** it MUST include commands to create the `mcp-admin` group and add a user to it, and MUST state that the user has to re-login for the membership to apply
-
-#### Scenario: Troubleshooting covers permission denied on the socket
-- **WHEN** an operator hits a permission error running `linux-mcp auth`
-- **THEN** the runbook troubleshooting section MUST list stale group membership as a cause and re-login as the remedy
-
-### Requirement: Docs index links the runbook
-`docs/README.md` and the project `README.md` MUST link to the systemd install runbook so operators can discover it.
-
-#### Scenario: README points to runbook
-- **WHEN** a reader opens the project README or docs index
-- **THEN** there MUST be a link to `docs/runbooks/install-systemd.md` (or equivalent relative path)
-
-### Requirement: Runbook documents obtaining a token and connecting a client
-The install runbook MUST document how an operator obtains a token with `linux-mcp auth`, how to reach the server through an SSH tunnel to loopback, and how to supply the token to an MCP client as an `Authorization: Bearer` header. It MUST state that tokens are invalidated when the service restarts.
-
-#### Scenario: Operator can go from install to connected client
-- **WHEN** an operator follows the runbook end to end
-- **THEN** it MUST show issuing a token, establishing the SSH tunnel to the loopback port, and configuring the client with the bearer header
-
-#### Scenario: Restart behaviour documented
-- **WHEN** an operator reads the runbook
-- **THEN** it MUST state that restarting the service invalidates every previously issued token

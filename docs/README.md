@@ -64,7 +64,7 @@ Cómo configurar cada cliente MCP contra el servidor, con túnel SSH y token bea
 
 | Runbook | Descripción |
 |---------|-------------|
-| [Instalar con systemd](runbooks/install-systemd.md) | Usuario `mcp-agent`, grupo `mcp-admin`, unit, tokens, update, uninstall |
+| [Instalar con systemd](runbooks/install-systemd.md) | Usuario `mcp-agent`, grupo `mcp-admin`, caps DAC+ptrace, unit, tokens, update, uninstall |
 | [Desarrollo local](runbooks/local-development.md) | `task dev`, `task token`, MCP Inspector, cuándo hace falta `--cors` |
 
 ## Convención

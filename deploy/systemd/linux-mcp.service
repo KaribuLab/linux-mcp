@@ -20,8 +20,11 @@ RuntimeDirectoryMode=0755
 SupplementaryGroups=mcp-admin
 
 # Elevated read for ops visibility; app-level denylist remains mandatory.
-AmbientCapabilities=CAP_DAC_READ_SEARCH
-CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+# CAP_SYS_PTRACE: resolve socket inode → Pid/Process via /proc/*/fd for
+# processes of other users (same class of access ss -p needs). No MCP tool
+# dumps process memory; the capability only enables that inode walk.
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYS_PTRACE
 NoNewPrivileges=true
 
 # Write hardening: read-mostly agent.
@@ -39,10 +42,11 @@ SystemCallArchitectures=native
 # No SystemCallFilter=@system-service: on several LTS hosts that whitelist
 # returns EPERM for a syscall Go 1.26 needs at startup and the process SEGV.
 
-# The token signing key lives only in memory: no core dump may leak it, and
-# other users must not be able to inspect this process.
+# Do not set ProtectProc=invisible: ss/ss_grep and ps need to see other
+# users' /proc entries to map sockets to owners and list processes.
+
+# The token signing key lives only in memory: no core dump may leak it.
 LimitCORE=0
-ProtectProc=invisible
 
 # Unix issuance socket, loopback HTTP, and netlink for ss/ss_grep (sock_diag).
 RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK

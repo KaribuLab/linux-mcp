@@ -10,7 +10,7 @@ import (
 )
 
 // SsGrepToolDescription is the MCP tool description (agent-facing response contract).
-const SsGrepToolDescription = `List sockets via netlink sock_diag and filter markdown ROWS by a pattern (never runs the ss binary). Same state/family/show* args as ss. Pattern modes match list_grep: glob against Local when extended=false and pattern contains * ? [; otherwise literal/RE2 on the full data row — prefer specific patterns like 0.0.0.0:3306 (Peer may also contain 0.0.0.0). On success: [ss_grep entries=returned/total truncated=bool columns=...] + matching rows only.`
+const SsGrepToolDescription = `List sockets via netlink sock_diag and filter markdown ROWS by a pattern (never runs the ss binary). Same state/family/show* args as ss (including Pid/Process via /proc/*/fd; under the reference systemd unit this resolves foreign process owners). Pattern modes match list_grep: glob against Local when extended=false and pattern contains * ? [; otherwise literal/RE2 on the full data row — prefer specific patterns like 0.0.0.0:3306 (Peer may also contain 0.0.0.0). On success: [ss_grep entries=returned/total truncated=bool columns=...] + matching rows only.`
 
 type SsGrepArgs struct {
 	Pattern     string `json:"pattern" jsonschema:"filter for socket rows: glob against Local when it contains * ? [; otherwise literal substring on the full row; RE2 when extended=true"`
