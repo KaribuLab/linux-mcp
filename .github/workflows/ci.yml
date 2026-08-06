@@ -39,6 +39,35 @@ jobs:
       - name: Tests
         run: go test -race ./...
 
+      # Shellcheck POSIX sobre el instalador one-liner. -s sh es obligatorio:
+      # fuerza a shellcheck a evaluar como POSIX y atrapa bashisms ([[ ]],
+      # local, arrays, pipefail, ${var,,}, etc.) que romperían el script en
+      # hosts donde /bin/sh es dash o ash.
+      - name: Instalar shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint del instalador con shellcheck (POSIX)
+        run: shellcheck -s sh install.sh
+
+      # Chequeos de sintaxis contra las dos implementaciones de /bin/sh más
+      # comunes en servers Linux: dash (Debian/Ubuntu) y busybox ash (Alpine).
+      # Esto complementa a shellcheck y detecta cualquier caso donde el script
+      # use una extensión que shellcheck no marque pero el shell real sí rechace.
+      - name: Instalar dash y busybox-static
+        run: sudo apt-get install -y dash busybox-static
+
+      - name: Sintaxis con dash
+        run: dash -n install.sh
+
+      - name: Sintaxis con busybox sh
+        run: busybox sh -n install.sh
+
+      # Defensa-en-profundidad sobre shellcheck: greps explícitos de patrones
+      # comunes de bash que rompen en dash/ash. Sale con código 1 y muestra
+      # línea y patrón si encuentra algún match.
+      - name: Scan de bashisms comunes
+        run: ./.github/scripts/scan-bashisms.sh install.sh
+
       # systemd-analyze exige que ExecStart exista, así que el binario se
       # instala en la ruta que declara la unit antes de validarla.
       - name: Instalar el binario en la ruta de la unit
