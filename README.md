@@ -13,6 +13,18 @@ Usa transporte **Streamable HTTP** en `http://localhost:5000` y exige un token b
 
 ## Instalación
 
+### One-liner (recomendado)
+
+Forma más rápida de tener el servicio funcionando en cualquier host Linux con systemd:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KaribuLab/linux-mcp/main/install.sh | sudo sh
+```
+
+El script (POSIX `sh`, ~200 líneas, linter `shellcheck -s sh` en CI) descarga el binario desde Releases, valida SHA256, crea `mcp-agent` y `mcp-admin` si no existen, instala la unit desde `main`, habilita y arranca el servicio, y verifica que `127.0.0.1:5000` devuelve `401` y que `/run/linux-mcp/issue.sock` queda en `0660 mcp-agent:mcp-admin`. Es idempotente: re-ejecutarlo reemplaza el binario por la última versión y reinicia el servicio (lo que invalida los tokens en vuelo — el operador debe volver a ejecutar `linux-mcp auth`).
+
+Detalles, overrides por env (`LINUX_MCP_VERSION`, `LINUX_MCP_BINDIR`) y troubleshooting: [docs/runbooks/install-one-line.md](docs/runbooks/install-one-line.md).
+
 ### Descargar un binario publicado
 
 Cada merge a `main` con Conventional Commits (`feat:` / `fix:` / breaking) calcula la versión con [kli](https://github.com/KaribuLab/kli) y, si hay bump, publica un GitHub Release con binarios `linux/amd64` y `linux/arm64` más `SHA256SUMS` en [Releases](https://github.com/KaribuLab/linux-mcp/releases). Usá un tag que exista ahí; `-f` hace que `curl` falle ante 404 (sin eso, un HTML de error termina en `SHA256SUMS` y `sha256sum` se queja del formato).

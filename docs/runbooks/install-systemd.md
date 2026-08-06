@@ -2,6 +2,8 @@
 
 Runbook para desplegar el servidor MCP como servicio systemd con usuario `mcp-agent`, capacidades `CAP_DAC_READ_SEARCH` + `CAP_SYS_PTRACE`, y emisión de tokens restringida al grupo `mcp-admin`.
 
+> **Forma recomendada: one-liner.** Si preferís un único comando en vez de los pasos manuales de abajo, usá [`docs/runbooks/install-one-line.md`](install-one-line.md). El script `install.sh` (raíz del repo) automatiza todo este runbook de forma idempotente y es POSIX `sh`. Los pasos manuales de aquí siguen siendo la fuente de verdad para entender qué hace cada comando y para hosts donde pipe-to-sh no es opción.
+
 La **policy de lectura en el proceso Go es obligatoria** aunque no uses systemd: la unit solo añade defensa en profundidad (`InaccessiblePaths`, hardening de escritura). El binario puede correr a mano sin esta unit.
 
 ### Capacidades de la unit y riesgo Bearer
